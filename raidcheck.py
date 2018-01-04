@@ -94,6 +94,12 @@ runopts={}
 runopts['walkopts']={}
 runopts['compopts']={}
 
+if "_askdropold" in arglist:
+	runopts['compopts']['askdropold']=1
+elif "_dropold" in arglist:
+	runopts['compopts']['dropold']=1
+
+
 runopts['walkopts']['filters']={'deny':["garbage"],'allowonly':["imgs","videos","docs","zip","music","misc"]}
 
 logfolder="/var/log/validates"
