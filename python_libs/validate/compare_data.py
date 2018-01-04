@@ -462,7 +462,7 @@ def beginCompareStage(loglist,runname,masterroute,timestamp,targetlist,datasets,
 				if tname not in sumlist[runname].keys():
 					sumlist[runname][tname]={}
 				for tresult,val in nameset.iteritems():
-					if tresult not in sumlist[tname].keys():
+					if tresult not in sumlist[runname][tname].keys():
 						sumlist[runname][tname][tresult]=0
 					sumlist[runname][tname][tresult]+=val
 

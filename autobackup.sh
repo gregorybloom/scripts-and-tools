@@ -432,12 +432,12 @@ mailout() {
   if [ "$type" == "locked" ]; then
     SUBJECT="autobkup-LOCKED: $thedate $RUN_TYPE"
     echo "LOCKED AT $locktime by $BASELOGPATH/$RUN_TYPE.lock.txt" > "$outfile"
-    echo "\n$thedate\n" >> "$outfile"
+    echo "$thedate   -" >> "$outfile"
   elif [ "$type" == "pre_error" ]; then
     SUBJECT="autobkup-PRE_ERROR: $thedate $RUN_TYPE"
     fileone="$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
     echo "$SUBJECT\n" > "$outfile"
-    echo "\n$thedate\n$thedate2\n" >> "$outfile"
+    echo "$thedate   $thedate2" >> "$outfile"
     cat "$fileone" >> "$outfile"
     if [ "$ERROR_FAIL" == true ]; then
       fileone2="$RUNLOGPATH/log_errs-$LOGSUFFIX"
@@ -449,21 +449,21 @@ mailout() {
     fileone="$RUNLOGPATH/log_errs-$LOGSUFFIX"
     fileone2="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
     echo "$SUBJECT\n" > "$outfile"
-    echo "\n$thedate\n$thedate2\n" >> "$outfile"
+    echo "$thedate   $thedate2" >> "$outfile"
     cat "$fileone" >> "$outfile"
     cat "$fileone2" >> "$outfile"
   elif [ "$type" == "summary" ]; then
     SUBJECT="autobkup-SUMMARY: $thedate $RUN_TYPE"
     fileone="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
     echo "$SUBJECT\n" > "$outfile"
-    echo "\n$thedate\n$thedate2\n" >> "$outfile"
+    echo "$thedate   $thedate2" >> "$outfile"
     cat "$fileone" >> "$outfile"
   fi
   if [ -f "$outfile" ]; then
     if [ "$type" == "pre_error" ] || [ "$type" == "error" ]; then
       echo -e "============================\n" > "$_BANNERFILE"
       echo "$SUBJECT" >> "$_BANNERFILE"
-      echo "$thedate\n$thedate2" >> "$_BANNERFILE"
+      echo "$thedate   $thedate2" >> "$_BANNERFILE"
       echo -e "============================\n" >> "$_BANNERFILE"
     fi
     if [ "$USE_EMAIL" == true ] && [ "$HAS_SWAKS" == true ] && [ ! -z "$_ALERTEMAIL" ]; then
@@ -592,15 +592,20 @@ if [ "$VALID_CHECK" == true ]; then
         ERROR_FAIL=true
         touch "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
         echo -e "ERROR: CONFLICT FOUND IN VALIDATOR RUN:  '$vsummary'\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
-        echo -e "--------------------------\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+        cat "$vsummary" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
         break
       fi
+#    rm -f "$RUNTMPPATH/rsynclog.txt"
     done
   fi
   if [ "$PRE_ERROR_FAIL" == true ]; then
     thedate2="$(date +'%Y%m%d_T%H%M')"
     mailout "pre_error"
     exit 0
+  fi
+  if [ -e "$vsummary" ]; then
+    cat "$vsummary" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+    echo -e "--------------------------\n" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
   fi
 fi
 
@@ -767,8 +772,19 @@ for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
     nv2=$(grep -nP "^$prefregstr\s*Number of files\:\s*[\d\.\,]+\s*\(reg\:\s*[\d\.\,]+,\s*dir\:\s*[\d\.\,]+\)\s*$" "$tmpfile")
     nval2=$(echo "$nv2" | grep -oP "^\d+(?=\:)")
 
-    tail "-n+$nval" "$tmpfile"| head -n 1 >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
-    tail "-n+$nval2" "$tmpfile" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+    if [ -e "$tmpfile.2" ]; then
+      rm -f "$tmpfile.2"
+    fi
+    tail "-n+$nval" "$tmpfile"| head -n 1 >> "$tmpfile.2"
+    tail "-n+$nval2" "$tmpfile" >> "$tmpfile.2"
+
+    for h in $(cat "$tmpfile.2"); do
+      if echo "$h" | grep -qP "^\d+(?:\/\d+)+\s+\d+(?:\:\d+)+\s+\[\d+\]\s+(?:[Tt]otal|Number of|Literal data|Matched data|sent)"; then
+        tmpline=$(echo "$h" | sed -e 's/^[[:digit:]]*\/[[:digit:]]*\/[[:digit:]]*[[:space:]][[:digit:]]*\:[[:digit:]]*\:[[:digit:]]*[[:space:]]\[[[:digit:]]*\][[:space:]]//g')
+        echo "$tmpline" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+      fi
+    done
+    rm -f "$tmpfile.2"
   done
   #####################################
 
