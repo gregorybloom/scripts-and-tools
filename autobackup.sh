@@ -430,14 +430,14 @@ mailout() {
   rm -f "$outfile"
   SUBJECT=""
   if [ "$type" == "locked" ]; then
-    SUBJECT="autobkup-LOCKED: $thedate $RUN_TYPE"
+    SUBJECT="autobkup-LOCKED: $thedate1 $RUN_TYPE"
     echo "LOCKED AT $locktime by $BASELOGPATH/$RUN_TYPE.lock.txt" > "$outfile"
-    echo -e "$thedate\n-\n" >> "$outfile"
+    echo "$thedate1  =  -" >> "$outfile"
   elif [ "$type" == "pre_error" ]; then
-    SUBJECT="autobkup-PRE_ERROR: $thedate $RUN_TYPE"
+    SUBJECT="autobkup-PRE_ERROR: $thedate1 $RUN_TYPE"
     fileone="$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
     echo "$SUBJECT\n" > "$outfile"
-    echo -e "\n$thedate\n$thedate2\n" >> "$outfile"
+    echo "$thedate1  =  $thedate2" >> "$outfile"
     cat "$fileone" >> "$outfile"
     if [ "$ERROR_FAIL" == true ]; then
       fileone2="$RUNLOGPATH/log_errs-$LOGSUFFIX"
@@ -445,25 +445,25 @@ mailout() {
       cat "$fileone2" >> "$outfile"
     fi
   elif [ "$type" == "error" ]; then
-    SUBJECT="autobkup-ERROR: $thedate $RUN_TYPE"
+    SUBJECT="autobkup-ERROR: $thedate1 $RUN_TYPE"
     fileone="$RUNLOGPATH/log_errs-$LOGSUFFIX"
     fileone2="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
     echo "$SUBJECT\n" > "$outfile"
-    echo -e "\n$thedate\n$thedate2\n" >> "$outfile"
+    echo "$thedate1  =  $thedate2" >> "$outfile"
     cat "$fileone" >> "$outfile"
     cat "$fileone2" >> "$outfile"
   elif [ "$type" == "summary" ]; then
-    SUBJECT="autobkup-SUMMARY: $thedate $RUN_TYPE"
+    SUBJECT="autobkup-SUMMARY: $thedate1 $RUN_TYPE"
     fileone="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
     echo "$SUBJECT\n" > "$outfile"
-    echo -e "\n$thedate\n$thedate2\n" >> "$outfile"
+    echo "$thedate1  =  $thedate2" >> "$outfile"
     cat "$fileone" >> "$outfile"
   fi
   if [ -f "$outfile" ]; then
     if [ "$type" == "pre_error" ] || [ "$type" == "error" ]; then
       echo -e "============================\n" > "$_BANNERFILE"
       echo "$SUBJECT" >> "$_BANNERFILE"
-      echo -e "\n$thedate\n$thedate2\n" >> "$_BANNERFILE"
+      echo "$thedate1  =  $thedate2" >> "$_BANNERFILE"
       echo -e "============================\n" >> "$_BANNERFILE"
     fi
     if [ "$USE_EMAIL" == true ] && [ "$HAS_SWAKS" == true ] && [ ! -z "$_ALERTEMAIL" ]; then
@@ -483,6 +483,7 @@ mailout() {
 
 #####################################################################
 thedate="$(date +'%Y%m%d_T%H%M')"
+thedate1="$(date +'%Y/%m/%d  %H:%M')"
 
 RUN_TYPE=false
 PRE_CHECK=false
@@ -599,7 +600,7 @@ if [ "$VALID_CHECK" == true ]; then
     done
   fi
   if [ "$PRE_ERROR_FAIL" == true ]; then
-    thedate2="$(date +'%Y%m%d_T%H%M')"
+    thedate2="$(date +'%Y/%m/%d  %H:%M')"
     mailout "pre_error"
     exit 0
   fi
@@ -678,14 +679,14 @@ if [ "$PRE_CHECK" == true ]; then
     rm -f "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp"
   done
   if [ "$PRE_ERROR_FAIL" == true ]; then
-    thedate2="$(date +'%Y%m%d_T%H%M')"
+    thedate2="$(date +'%Y/%m/%d  %H:%M')"
     mailout "pre_error"
     exit 0
   fi
 fi
 
 if [ "$ERROR_FAIL" == true ]; then
-  thedate2="$(date +'%Y%m%d_T%H%M')"
+  thedate2="$(date +'%Y/%m/%d  %H:%M')"
   mailout "error"
   exit 0
 fi
@@ -796,7 +797,7 @@ for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
   #  cat "$RUNLOGPATH/log_full-$LOGSUFFIX.tmp" >> "$RUNLOGPATH/log_full-$LOGSUFFIX"
   rm -f "$RUNLOGPATH/log_full-$LOGSUFFIX.tmp"
 done
-thedate2="$(date +'%Y%m%d_T%H%M')"
+thedate2="$(date +'%Y/%m/%d  %H:%M')"
 if [ "$ERROR_FAIL" == true ]; then
   mailout "error"
 else
