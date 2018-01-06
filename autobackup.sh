@@ -436,7 +436,7 @@ mailout() {
   elif [ "$type" == "pre_error" ]; then
     SUBJECT="autobkup-PRE_ERROR: $thedate1 $RUN_TYPE"
     fileone="$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
-    echo "$SUBJECT\n" > "$outfile"
+    echo -e "$SUBJECT\n" > "$outfile"
     echo "$thedate1  =  $thedate2" >> "$outfile"
     cat "$fileone" >> "$outfile"
     if [ "$ERROR_FAIL" == true ]; then
@@ -448,14 +448,14 @@ mailout() {
     SUBJECT="autobkup-ERROR: $thedate1 $RUN_TYPE"
     fileone="$RUNLOGPATH/log_errs-$LOGSUFFIX"
     fileone2="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
-    echo "$SUBJECT\n" > "$outfile"
+    echo -e "$SUBJECT\n" > "$outfile"
     echo "$thedate1  =  $thedate2" >> "$outfile"
     cat "$fileone" >> "$outfile"
     cat "$fileone2" >> "$outfile"
   elif [ "$type" == "summary" ]; then
     SUBJECT="autobkup-SUMMARY: $thedate1 $RUN_TYPE"
     fileone="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
-    echo "$SUBJECT\n" > "$outfile"
+    echo -e "$SUBJECT\n" > "$outfile"
     echo "$thedate1  =  $thedate2" >> "$outfile"
     cat "$fileone" >> "$outfile"
   fi
