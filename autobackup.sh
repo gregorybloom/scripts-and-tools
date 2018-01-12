@@ -571,6 +571,9 @@ ERROR_FAIL=false
 verifydriveflags
 findcopypaths
 
+prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
+
+
 if [ "$VALID_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
   extralist=""
@@ -582,7 +585,38 @@ if [ "$VALID_CHECK" == true ]; then
       vlogpath=$(echo "$n" | grep -oP "\/.*$")
     fi
   done
+
   if [ ! "$vlogpath" == false ]; then
+    vbaselog=$(echo "$vlogpath" | grep -oP "^.*(?=\/md5vali\/\w+\/)")
+    targetpaths=()
+    for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
+      IFS=',' read -ra vals8 <<< "$j"    #Convert string to array
+      targetdrivepath=${vals8[5]}
+      targetpaths+=($targetdrivepath)
+    done
+    for p in ${!targetpaths[@]}; do
+      targetdrivepath="${targetpaths["$p"]}"
+
+      mkdir -p "$targetdrivepath/logs/"
+      rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile.2" "$vbaselog" "$targetdrivepath/logs/"
+
+      if grep -qP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile.2"; then
+        PRE_ERROR_FAIL=true
+        ERROR_FAIL=true
+        grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile.2" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+      fi
+      if grep -qP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile.2"; then
+        PRE_ERROR_FAIL=true
+        ERROR_FAIL=true
+        grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile.2" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+      fi
+      if [ -f "$tmpfile.2" ]; then
+        rm -f "$tmpfile.2"
+      fi
+    done
+  fi
+
+  if [ ! "$vlogpath" == false ] && [ "$PRE_ERROR_FAIL" == false ]; then
     vdate=$(echo "$vlogpath" | grep -oP "(?<=master\-)\d+\-\d+(?=\.txt\s*$)")
     vpath=$(echo "$vlogpath" | grep -oP "^\/.*\/(?=master-[^\/]+\/[^\/]+\.txt\s*$)")
     vsummary="$vpath""md5vali-summary-$vdate.txt"
@@ -611,7 +645,6 @@ if [ "$VALID_CHECK" == true ]; then
 fi
 
 
-prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
 if [ "$PRE_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
   for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
@@ -719,10 +752,8 @@ for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
   echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
   if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
     if [ -d "$drivepath/$sourcepath" ]; then
-      echo "a $j"
       rsync -hrltvvzWPSD --no-links --delete --delete-after --stats --no-compress --log-file="$tmpfile" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
     elif [ -f "$drivepath/$sourcepath" ]; then
-      echo "b $j"
       rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
     fi
   elif [ ! -e "$drivepath/$sourcepath" ]; then
