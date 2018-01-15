@@ -1,14 +1,20 @@
 #!/bin/bash
 
+
+
+
+#if [ -z "$1" ]; then
+#	path="./"
+#else
+#	path="$1"
+#fi
+
+source "config/findsshkeypath.sh"
+source "config/grab_server100_info.sh"
+source "config/grab_server100_pythondata.sh"
+
 DEPLOYPATH="../../deploy"
 
-if [ -z "$1" ]; then
-	path="./"
-else
-	path="$1"
-fi
-
-source "config/grab_server111_info.sh"
 
 
 TEMP=`getopt -o nzP --long existing,exclude:,exclude-from:,include:,include-from: \
@@ -36,32 +42,21 @@ while true ; do
 	esac
 done
 
+
+path="$_SERVERBACKDUMP/Config/configdump/sites-available/"
+
 rm -rf "$DEPLOYPATH"
-
-
-folderpath="$path"
-if [ -d "$path" ]; then
-	if echo "$path" | grep -oP "[^/]$"; then
-		path="$path/"
-	fi
-elif [ -f "$path" ]; then
-	folderpath=$(echo "$path" | grep -oP "^.*/")
-	echo "$folderpath"
-fi
-
-
-
 mkdir -p "$DEPLOYPATH"
-rsync -a --no-links --exclude-from 'd_excludes.txt' "$path" "$DEPLOYPATH"
+
+rsync -a --no-links "$path" "$DEPLOYPATH"
 chmod 755 -R "$DEPLOYPATH"
 
 if [[ "$path" = "./" ]]; then
 	path=""
 fi
 
+rsync --no-links -e "ssh -p $_SERVER100_PORT -i $sshkey -o PreferredAuthentications=publickey" -avvzcWP --delete --delete-after --port="$_SERVER100_PORT" deploy "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_WEBPATH/sites-available/"
 
-
-
-rsync --no-links --exclude-from 'd_excludes.txt' -e "ssh -p $_SERVER111_PORT" -avvzcWP --port="$_SERVER111_PORT" "$DEPLOYPATH/" "$_SERVER111_USER@$_SERVER111_IP:/home/$_SERVER111_USER/scripts/$folderpath"
+echo "Log onto the server to move it to $_SERVER100_SITESAVAIL"
 
 rm -rf "$DEPLOYPATH"
