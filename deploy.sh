@@ -1,8 +1,8 @@
 #!/bin/bash
 
-basefolder="./"
+basefolder="../"
 if pwd | grep -qP "\/scripts\-and\-tools\s*$"; then
-	basefolder="../"
+	basefolder="../../"
 fi
 deployfolder="$basefolder/deploy"
 
@@ -11,9 +11,9 @@ deployfolder="$basefolder/deploy"
 
 
 if [ -z "$1" ]; then
-	path="$basefolder"
+	exit 0
 else
-	path="$basefolder$1"
+	path="$1"
 fi
 
 
@@ -57,14 +57,15 @@ elif [ -f "$path" ]; then
 	folderpath=$(echo "$path" | grep -oP "^.*/")
 	isfolder=0
 fi
-
-
-
-
-if [ -d "$deployfolder" ]; then
-	rm -rf "$deployfolder"
+if echo "$folderpath" | grep -qP "^\.\.\/.*$"; then
+#	folderpath=$(echo "$folderpath" | grep -oP "(?<=^\.\.\/).*$")
+	folderpath=$(echo "$folderpath" | sed -e 's/^\(\.\.\/\)*//g')
 fi
-mkdir "$deployfolder"
+
+
+
+rm -rf "$deployfolder"
+mkdir -p "$deployfolder"
 rsync -a --no-links --exclude-from 'd_excludes.txt' "$path" "$deployfolder"
 chmod 755 -R "$deployfolder"
 
