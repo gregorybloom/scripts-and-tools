@@ -333,7 +333,30 @@ greprsynclines() {
   reporting+=("rsync error\:.*$")
   drek=()
 }
+parsersync() {
+  parsefile="$1"
+  targetfile="$2"
+  for g in $(grep -P "^$prefregstr\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile"); do
+    nv=$(grep -nP "^$prefregstr\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile")
+    nval=$(echo "$nv" | grep -oP "^\d+(?=\:)")
+    nv2=$(grep -nP "^$prefregstr\s*Number of files\:\s*[\d\.\,]+\s*\(reg\:\s*[\d\.\,]+,\s*dir\:\s*[\d\.\,]+\)\s*$" "$parsefile")
+    nval2=$(echo "$nv2" | grep -oP "^\d+(?=\:)")
 
+    if [ -e "$parsefile.2" ]; then
+      rm -f "$parsefile.2"
+    fi
+    tail "-n+$nval" "$parsefile"| head -n 1 >> "$parsefile.2"
+    tail "-n+$nval2" "$parsefile" >> "$parsefile.2"
+
+    for h in $(cat "$parsefile.2"); do
+      if echo "$h" | grep -qP "^\d+(?:\/\d+)+\s+\d+(?:\:\d+)+\s+\[\d+\]\s+(?:[Tt]otal|Number of|Literal data|Matched data|sent)"; then
+        tmpline=$(echo "$h" | sed -e 's/^[[:digit:]]*\/[[:digit:]]*\/[[:digit:]]*[[:space:]][[:digit:]]*\:[[:digit:]]*\:[[:digit:]]*[[:space:]]\[[[:digit:]]*\][[:space:]]//g')
+        echo "$tmpline" >> "$targetfile"
+      fi
+    done
+    rm -f "$parsefile.2"
+  done
+}
 
 readrsyncline() {
   rline=$1
@@ -452,6 +475,12 @@ mailout() {
     echo "$thedate1  =  $thedate2" >> "$outfile"
     cat "$fileone" >> "$outfile"
     cat "$fileone2" >> "$outfile"
+  elif [ "$type" == "prep_only" ]; then
+    SUBJECT="autobkup-PREP SUMMARY: $thedate1 $RUN_TYPE"
+    fileone="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+    echo -e "$SUBJECT\n" > "$outfile"
+    echo "$thedate1  =  $thedate2" >> "$outfile"
+    cat "$fileone" >> "$outfile"
   elif [ "$type" == "summary" ]; then
     SUBJECT="autobkup-SUMMARY: $thedate1 $RUN_TYPE"
     fileone="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
@@ -472,6 +501,7 @@ mailout() {
       #      mail -s "$SUBJECT" "$USER" < "$outfile"
       if [ "$type" == "pre_error" ] || [ "$type" == "error" ]; then
         cp -v "$outfile" "$drivepath/$type-$LOGSUFFIX"
+        echo "$outfile"
       fi
     fi
   fi
@@ -573,12 +603,14 @@ findcopypaths
 
 prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
 
-
+echo "VALID_CHECK $VALID_CHECK"
 if [ "$VALID_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
   extralist=""
 
   pyrun=$(python raidcheck.py "$extralist" | tail)
+  echo "$pyrun"
+
   vlogpath=false
   for n in ${pyrun[@]}; do
     if echo "$n" | grep -qP "^\s*\-\s*logged in\:\s*"; then
@@ -586,6 +618,7 @@ if [ "$VALID_CHECK" == true ]; then
     fi
   done
 
+  # Back up the validation logs on all possible drive targets
   if [ ! "$vlogpath" == false ]; then
     vbaselog=$(echo "$vlogpath" | grep -oP "^.*(?=\/md5vali\/\w+\/)")
     targetpaths=()
@@ -620,8 +653,8 @@ if [ "$VALID_CHECK" == true ]; then
     vdate=$(echo "$vlogpath" | grep -oP "(?<=master\-)\d+\-\d+(?=\.txt\s*$)")
     vpath=$(echo "$vlogpath" | grep -oP "^\/.*\/(?=master-[^\/]+\/[^\/]+\.txt\s*$)")
     vsummary="$vpath""md5vali-summary-$vdate.txt"
+
     for m in $(cat "$vsummary"); do
-      echo "z $m"
       if echo "$m" | grep -qP "(?:missing|conflicts)?\s*\:\s*\d+"; then
         PRE_ERROR_FAIL=true
         ERROR_FAIL=true
@@ -632,13 +665,17 @@ if [ "$VALID_CHECK" == true ]; then
       fi
 #    rm -f "$RUNTMPPATH/rsynclog.txt"
     done
+    vpresent="$vpath""master-$vdate/md5vali-present-$vdate.txt"
+    if [ if "$vpresent" ]; then
+      rm -f "$vpresent"
+    fi
   fi
   if [ "$PRE_ERROR_FAIL" == true ]; then
     thedate2="$(date +'%Y/%m/%d  %H:%M')"
     mailout "pre_error"
     exit 0
   fi
-  if [ -e "$vsummary" ]; then
+  if [ -f "$vsummary" ]; then
     cat "$vsummary" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
     echo -e "--------------------------\n" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
   fi
@@ -723,13 +760,19 @@ if [ "$ERROR_FAIL" == true ]; then
   mailout "error"
   exit 0
 fi
+
+
+df -h >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+
+
 if [ "$PREP_ONLY" == true ]; then
+  thedate2="$(date +'%Y/%m/%d  %H:%M')"
+  mailout "prep_only"
   exit 0
 fi
 
-ERROR_FAIL=false
-df -h >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
 
+ERROR_FAIL=false
 for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
   IFS=',' read -ra vals8 <<< "$j"    #Convert string to array
 
@@ -798,26 +841,7 @@ for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
 
   ##################################### improve
   echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
-  for g in $(grep -P "^$prefregstr\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$tmpfile"); do
-    nv=$(grep -nP "^$prefregstr\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$tmpfile")
-    nval=$(echo "$nv" | grep -oP "^\d+(?=\:)")
-    nv2=$(grep -nP "^$prefregstr\s*Number of files\:\s*[\d\.\,]+\s*\(reg\:\s*[\d\.\,]+,\s*dir\:\s*[\d\.\,]+\)\s*$" "$tmpfile")
-    nval2=$(echo "$nv2" | grep -oP "^\d+(?=\:)")
-
-    if [ -e "$tmpfile.2" ]; then
-      rm -f "$tmpfile.2"
-    fi
-    tail "-n+$nval" "$tmpfile"| head -n 1 >> "$tmpfile.2"
-    tail "-n+$nval2" "$tmpfile" >> "$tmpfile.2"
-
-    for h in $(cat "$tmpfile.2"); do
-      if echo "$h" | grep -qP "^\d+(?:\/\d+)+\s+\d+(?:\:\d+)+\s+\[\d+\]\s+(?:[Tt]otal|Number of|Literal data|Matched data|sent)"; then
-        tmpline=$(echo "$h" | sed -e 's/^[[:digit:]]*\/[[:digit:]]*\/[[:digit:]]*[[:space:]][[:digit:]]*\:[[:digit:]]*\:[[:digit:]]*[[:space:]]\[[[:digit:]]*\][[:space:]]//g')
-        echo "$tmpline" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
-      fi
-    done
-    rm -f "$tmpfile.2"
-  done
+  parsersync "$tmpfile" "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
   #####################################
 
   if [ "$LOOP_ERROR_FAIL" == true ]; then

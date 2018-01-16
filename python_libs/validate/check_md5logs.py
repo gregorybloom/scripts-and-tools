@@ -33,7 +33,7 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 		md5opts={}
 	if 'walkopts' not in md5opts.keys():
 		md5opts['walkopts']={}
-	
+
 	logset={}
 	mastset={}
 	errset={}
@@ -114,6 +114,7 @@ def md5SourcesAndTargets(targetlist,logfolder,datasets,md5opts=None):
 	if 'compopts' not in md5opts.keys():
 		md5opts['compopts']={}
 
+	print "A",datasets['logset'].keys(),datasets['mastset'].keys()
 	for runname,loglist in datasets['logset'].iteritems():
 #		print
 #		print 'xxxxxxxxxxxxxxx',runname
@@ -134,6 +135,7 @@ def logAndCompTargets(targetlist, logfolder, md5opts=None):
 
 	timestr = time.strftime("%Y%m%d-%H%M%S")
 	mountlist = findmounts.getMounts()
+
 	for groupname,infosets in targetlist.iteritems():
 		if 'file' in infosets.keys():
 			foundlist = findmounts.findTargetsInMounts(mountlist, infosets['file'])
