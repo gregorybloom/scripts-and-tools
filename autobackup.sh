@@ -1,6 +1,9 @@
 #!/bin/bash
 IFS=$'\n'
 
+SCRIPTPATH=`realpath $0`
+#SCRIPTDIR=`dirname $SCRIPT`
+
 OPTS=`getopt -o vh: --long verbose,force,help,email,precheck,vcheck,preponly,runtype: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
@@ -135,6 +138,14 @@ loadopts() {
 -- ) shift; break ;;
 * ) break ;;
 esac
+  if [ "$RUN_TYPE" ]; then
+    if echo "$RUN_TYPE" | grep -qP "^\s*[\w\-]+\s*$"; then
+      return 0
+    else
+      echo "BAD INPUT"
+      exit 1
+    fi
+  fi
 done
 
 echo VERBOSE=$VERBOSE
@@ -258,8 +269,13 @@ findcopypaths() {
 
     for k in $(ls -l "$path"); do
       if echo "$k" | grep -qP "^\-[\w\-\.\+]+\s*\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+(?:\d+\:)?\d+\s+_BACKUPFLAG_\w+_\.txt\s*$"; then
-        bkupflag=$(echo "$k" | grep -oP "(?<=\s)_BACKUPFLAG_\w+_(?=\.txt\s*$)")
-        backupflags+=($bkupflag)
+        # ADD BACKUP FLAGS ONLY IF THEY COME FROM SAME DRIVE AS SCRIPT
+        if [[ "$SCRIPTPATH" == ^$path.* ]]; then
+          bkupflag=$(echo "$k" | grep -oP "(?<=\s)_BACKUPFLAG_\w+_(?=\.txt\s*$)")
+          if [ -f "$path/$bkupflag.txt" ]; then
+            backupflags+=($bkupflag)
+          fi
+        fi
       fi
     done
 
@@ -282,29 +298,41 @@ findcopypaths() {
 
             DEST_FOUND=false
             SOURCE_FOUND=false
+            SOURCE_MATCHES_SELF=false
 
             if [ "$RUN_TYPE" == "$runname" ]; then
               if [ "$driveflag" == "$sourceflag" ]; then
                 SOURCE_FOUND=true
-                for n in $(cat "$RUNTMPPATH/mounted.txt"); do
-                  IFS=',' read -ra vals7 <<< "$n"    #Convert string to array
-                  targetflag2=${vals7[3]}
-                  if [[ "$targetflag" == "$targetflag2" ]]; then
-                    targetdrivepath=${vals7[1]}
-                    DEST_FOUND=true
-                    break
-                  fi
-                done
+                if [[ "$SCRIPTPATH" == ^$path.* ]]; then
+                  SOURCE_MATCHES_SELF=true
+                  for n in $(cat "$RUNTMPPATH/mounted.txt"); do
+                    IFS=',' read -ra vals7 <<< "$n"    #Convert string to array
+                    targetflag2=${vals7[3]}
+                    if [[ "$targetflag" == "$targetflag2" ]]; then
+                      targetdrivepath=${vals7[1]}
+                      DEST_FOUND=true
+                      break
+                    fi
+                  done
+                fi
               fi
               if [ "$DEST_FOUND" == true ]; then
                 drivepath=$(echo "$path")
                 echo "$runname,$copystep,$drivepath,$sourceflag,$sourcepath,$targetdrivepath,$targetflag,$targetpath" >> "$RUNTMPPATH/copypaths.txt"
                 echo "$runname,$copystep,$drivepath,$sourceflag,$sourcepath,$targetdrivepath,$targetflag,$targetpath"
-              elif [ "$SOURCE_FOUND" == true ]; then
+
+              elif [ "$SOURCE_MATCHES_SELF" == true ]; then
                 echo "destination drive '$targetflag' not found"
                 ERROR_FAIL=true
                 touch "$RUNLOGPATH/log_errs-$LOGSUFFIX"
                 echo -e "ERROR: DESTINATION DRIVE '$targetflag' NOT FOUND\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX"
+                cat "$RUNTMPPATH/mounted.txt" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX"
+                echo -e "--------------------------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX"
+              elif [ "$SOURCE_FOUND" == true ]; then
+                echo "sourceflag '$sourceflag' doesn't match script's source"
+                ERROR_FAIL=true
+                touch "$RUNLOGPATH/log_errs-$LOGSUFFIX"
+                echo -e "ERROR: SOURCE DRIVE '$sourceflag' MISMATCH WITH SCRIPT SOURCE\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX"
                 cat "$RUNTMPPATH/mounted.txt" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX"
                 echo -e "--------------------------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX"
               else
@@ -603,13 +631,10 @@ findcopypaths
 
 prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
 
-echo "VALID_CHECK $VALID_CHECK"
 if [ "$VALID_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
-  extralist=""
 
-  pyrun=$(python raidcheck.py "$extralist" | tail)
-  echo "$pyrun"
+  pyrun=$(python raidcheck.py | tail)
 
   vlogpath=false
   for n in ${pyrun[@]}; do
