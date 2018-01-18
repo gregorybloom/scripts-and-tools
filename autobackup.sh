@@ -23,9 +23,12 @@ EndHelp
 ####################################
 checklocked() {
   lockedrunname=$1
+  echo "$BASELOGPATH/$lockedrunname"
   if [ -f "$BASELOGPATH/$lockedrunname.lock.txt" ]; then
+    echo "IGNORE_LOCKS $IGNORE_LOCKS"
     if [ "$IGNORE_LOCKS" == true ]; then
       rm -f "$BASELOGPATH/$lockedrunname.lock.txt"
+      echo "rm $BASELOGPATH/$lockedrunname"
       false
     else
       true
@@ -96,7 +99,13 @@ fi
 loadblockids() {
   for a in $(blkid); do
     # Unable to start 'blkid': The specified file was not found.
+    SAVEDRIVE=false
     if echo "$a" | grep -qP "^\/dev\/\w+\:\sLABEL=\"[\w\-\s]+\""; then
+      SAVEDRIVE=true
+    elif echo "$a" | grep -qP "^\/dev\/md\d+"; then
+      SAVEDRIVE=true
+    fi
+    if [ "$SAVEDRIVE" == true ]; then
       uuid=$(echo "$a" | grep -oP "(?<=\sUUID=\")[\w\-]+(?=\")")
       type=$(echo "$a" | grep -oP "(?<=\sTYPE=\")[\w\-]+(?=\")")
       path=$(echo "$a" | grep -oP "^[^\:\s]+(?=\:)")
@@ -124,10 +133,12 @@ loadopts() {
   HELP=false
   VALID_CHECK=false
   PREP_ONLY=false
+  IGNORE_LOCKS=false
 
   while true; do
+    echo ". $1"
    case "$1" in
-     -v | --verbose ) VERBOSE=true; shift ;;
+-v | --verbose ) VERBOSE=true; shift ;;
 -h | --help )    HELP=true; shift ;;
 --runtype )   RUN_TYPE="$2"; shift 2 ;;
 --force )   IGNORE_LOCKS=true; shift ;;
@@ -138,14 +149,6 @@ loadopts() {
 -- ) shift; break ;;
 * ) break ;;
 esac
-  if [ "$RUN_TYPE" ]; then
-    if echo "$RUN_TYPE" | grep -qP "^\s*[\w\-]+\s*$"; then
-      return 0
-    else
-      echo "BAD INPUT"
-      exit 1
-    fi
-  fi
 done
 
 echo VERBOSE=$VERBOSE
@@ -154,9 +157,16 @@ echo RUN_TYPE=$RUN_TYPE
 }
 loadrundata() {
   if [ "$RUN_TYPE" == false ]; then
-    exit 1;
+    exit 1
   fi
-
+  if [ "$RUN_TYPE" ]; then
+    if echo "$RUN_TYPE" | grep -qP "^\s*[\w\-]+\s*$"; then
+      return 0
+    else
+      echo "BAD INPUT"
+      exit 1
+    fi
+  fi
 }
 #####################################
 findmounted() {
@@ -172,14 +182,11 @@ findmounted() {
       opath=${vals2[0]}
       dpath=${vals2[1]}
       dtype=${vals2[2]}
-      #      echo "$uuid, $type==$dtype,  $opath==$path"
       if [[ "$opath" == "$path" ]]; then
-        #       if [[ "$type" == "$dtype" ]]; then
         echo "$opath,$dpath,$dtype" >> "$RUNTMPPATH/mounted.txt"
         #        echo "mount,$opath,$dpath,$dtype"
         MOUNT_FOUND=true
         break
-        #       fi
       fi
     done
     if [ "$MOUNT_FOUND" == false ]; then
@@ -269,8 +276,9 @@ findcopypaths() {
 
     for k in $(ls -l "$path"); do
       if echo "$k" | grep -qP "^\-[\w\-\.\+]+\s*\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+(?:\d+\:)?\d+\s+_BACKUPFLAG_\w+_\.txt\s*$"; then
+
         # ADD BACKUP FLAGS ONLY IF THEY COME FROM SAME DRIVE AS SCRIPT
-        if [[ "$SCRIPTPATH" == ^$path.* ]]; then
+        if [[ $SCRIPTPATH == $path* ]]; then
           bkupflag=$(echo "$k" | grep -oP "(?<=\s)_BACKUPFLAG_\w+_(?=\.txt\s*$)")
           if [ -f "$path/$bkupflag.txt" ]; then
             backupflags+=($bkupflag)
@@ -303,7 +311,7 @@ findcopypaths() {
             if [ "$RUN_TYPE" == "$runname" ]; then
               if [ "$driveflag" == "$sourceflag" ]; then
                 SOURCE_FOUND=true
-                if [[ "$SCRIPTPATH" == ^$path.* ]]; then
+                if [[ $SCRIPTPATH == $path* ]]; then
                   SOURCE_MATCHES_SELF=true
                   for n in $(cat "$RUNTMPPATH/mounted.txt"); do
                     IFS=',' read -ra vals7 <<< "$n"    #Convert string to array
