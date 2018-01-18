@@ -23,12 +23,9 @@ EndHelp
 ####################################
 checklocked() {
   lockedrunname=$1
-  echo "$BASELOGPATH/$lockedrunname"
   if [ -f "$BASELOGPATH/$lockedrunname.lock.txt" ]; then
-    echo "IGNORE_LOCKS $IGNORE_LOCKS"
     if [ "$IGNORE_LOCKS" == true ]; then
       rm -f "$BASELOGPATH/$lockedrunname.lock.txt"
-      echo "rm $BASELOGPATH/$lockedrunname"
       false
     else
       true
@@ -136,7 +133,6 @@ loadopts() {
   IGNORE_LOCKS=false
 
   while true; do
-    echo ". $1"
    case "$1" in
 -v | --verbose ) VERBOSE=true; shift ;;
 -h | --help )    HELP=true; shift ;;
