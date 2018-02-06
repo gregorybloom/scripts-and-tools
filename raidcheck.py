@@ -9,8 +9,7 @@ targetList['raid_backup']={}
 
 targetList['raid_backup']={'file':{},'foldersets':{},'subinfo':{}}
 
-if(len(sys.argv) == 1):
-	sys.exit();
+
 
 
 targetList['raid_backup']['file']['source']='_DRIVEFLAG_THE_RAID_.txt'

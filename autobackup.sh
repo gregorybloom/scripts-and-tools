@@ -61,9 +61,11 @@ rebuildtmpfiles() {
    mkdir -p "$RUNTMPPATH"
  fi
  tmpfiles=("blkid.txt" "unmounted.txt" "cmount.txt" "mounted.txt" "dmount.txt" "copypaths.txt" "rsynclog.txt")
- for p in ${!tmpfiles[@]}; do
-  if [ -f "$RUNTMPPATH/${tmpfiles["$p"]}" ]; then
-    rm -f "$RUNTMPPATH/${tmpfiles["$p"]}"
+ for p in ${tmpfiles[@]}; do
+#   pname="${tmpfiles["$p"]}"
+  pname="$p"
+  if [ -f "$RUNTMPPATH/$pname" ]; then
+    rm -f "$RUNTMPPATH/$pname"
   fi
 done
 }
@@ -147,8 +149,8 @@ loadopts() {
 esac
 done
 
-echo VERBOSE=$VERBOSE
-echo HELP=$HELP
+echo PREP_ONLY=$PREP_ONLY
+echo VALID_CHECK=$VALID_CHECK
 echo RUN_TYPE=$RUN_TYPE
 }
 loadrundata() {
@@ -228,7 +230,7 @@ automount() {
 
     if [ "$type" == "ntfs" ]; then
       #     echo "mount -t auto $path /media/$targetname"
-      "$RUNTMPPATH/newmounted.txt"
+      touch "$RUNTMPPATH/newmounted.txt"
 
       sudo mount -t "auto" "$path" "/media/$targetname"
       echo "auto,$path,/media/$targetname" >> "$RUNTMPPATH/newmounted.txt"
@@ -283,8 +285,9 @@ findcopypaths() {
       fi
     done
 
-    for back in ${!backupflags[@]}; do
-      backfile="${backupflags["$back"]}"
+    for back in ${backupflags[@]}; do
+#      backfile="${backupflags["$back"]}"
+      backfile="$back"
 
       if [ -f "$path/$backfile.txt" ]; then
         for m in $(cat "$path/$backfile.txt"); do
@@ -634,11 +637,11 @@ verifydriveflags
 findcopypaths
 
 prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
-
 if [ "$VALID_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
 
   pyrun=$(python raidcheck.py | tail)
+  echo "..$pyrun"
 
   vlogpath=false
   for n in ${pyrun[@]}; do
@@ -656,8 +659,9 @@ if [ "$VALID_CHECK" == true ]; then
       targetdrivepath=${vals8[5]}
       targetpaths+=($targetdrivepath)
     done
-    for p in ${!targetpaths[@]}; do
-      targetdrivepath="${targetpaths["$p"]}"
+    for p in ${targetpaths[@]}; do
+#      targetdrivepath="${targetpaths["$p"]}"
+      targetdrivepath="$p"
 
       mkdir -p "$targetdrivepath/logs/"
       rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile.2" "$vbaselog" "$targetdrivepath/logs/"
