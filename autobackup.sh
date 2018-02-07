@@ -1,13 +1,14 @@
 #!/bin/bash
 IFS=$'\n'
 
-SCRIPTPATH=`realpath $0`
-#SCRIPTDIR=`dirname $SCRIPT`
+SCRIPTPATH=`realpath "$0"`
+SCRIPTDIR=`dirname "$SCRIPTPATH"`
 
 OPTS=`getopt -o vh: --long verbose,force,help,email,precheck,vcheck,preponly,runtype: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
-source "config/autobackup_config.sh"
+source "$SCRIPTDIR/config/autobackup_config.sh"
+source "$SCRIPTDIR/bash_libs/scrape_swaks.sh"
 
 #####################################
 # Help function
@@ -530,8 +531,11 @@ mailout() {
       echo "$thedate1  =  $thedate2" >> "$_BANNERFILE"
       echo -e "============================\n" >> "$_BANNERFILE"
     fi
-    if [ "$USE_EMAIL" == true ] && [ "$HAS_SWAKS" == true ] && [ ! -z "$_ALERTEMAIL" ]; then
-      swaks --header "Subject: $SUBJECT" --body "$fileone" -t "$_ALERTEMAIL"
+    if [ "$USE_EMAIL" == true ] && [ "$HAS_SWAKS" == true ] && [ ! -z "$_ALERTEMAIL" ] && [ -f "$_HOMEFOLDER/.swaksrc" ]; then
+      scrape_swaks_config "$_HOMEFOLDER/"
+
+      sudo swaks --from "$SWAKFROM" --h-From "$_SWAKHFROM" -s "$SWAKPROTO" -tls -a LOGIN --auth-user "$SWAKUSER" --auth-password "$SWAKPASS" --header "Subject: $SUBJECT" --body "$fileone" -t "$_ALERTEMAIL"
+      echo "sent to $_ALERTEMAIL." | wall
     else
       #      mail -s "$SUBJECT" "$USER" < "$outfile"
       if [ "$type" == "pre_error" ] || [ "$type" == "error" ]; then
@@ -640,7 +644,7 @@ prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
 if [ "$VALID_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
 
-  pyrun=$(python raidcheck.py | tail)
+  pyrun=$(python $SCRIPTDIR/raidcheck.py | tail)
   echo "..$pyrun"
 
   vlogpath=false
