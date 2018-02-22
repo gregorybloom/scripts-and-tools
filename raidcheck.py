@@ -32,6 +32,7 @@ targetList['raid_backup']['foldersets']['videoset']['source']='/Media/Videos'
 targetList['raid_backup']['foldersets']['videoset']['target2']='/RAID_BACKUP/Media/Videos'
 targetList['raid_backup']['foldersets']['videoset']['target4']='/RAID_BACKUP/Media/Videos'
 
+
 targetList['raid_backup']['foldersets']['cloudset']={}
 targetList['raid_backup']['foldersets']['cloudset']['source']='/CLOUD_BACKUP'
 targetList['raid_backup']['foldersets']['cloudset']['target1']='/RAID_BACKUP/CLOUD_BACKUP'
@@ -89,6 +90,10 @@ targetList['raid_backup']['foldersets']['m_unsortedset']['source']='/Media/-unso
 targetList['raid_backup']['foldersets']['m_unsortedset']['target1']='/RAID_BACKUP/Media/-unsorted'
 targetList['raid_backup']['foldersets']['m_unsortedset']['target3']='/RAID_BACKUP/Media/-unsorted'
 
+
+#targetList['raid_backup']['foldersets'] = {'videoset': targetList['raid_backup']['foldersets']['videoset']}
+
+
 runopts={}
 runopts['walkopts']={}
 runopts['compopts']={}
@@ -100,6 +105,16 @@ elif "_dropold" in arglist:
 
 
 runopts['walkopts']['filters']={'deny':["garbage"],'allowonly':["imgs","videos","docs","zip","music","misc"]}
+
+if "_testfromlog" in arglist:
+	pt=arglist.index("_testfromlog")+1
+	if pt < len(arglist):
+		runopts['compopts']['usemd5log']={'logpath':arglist[pt]}
+if "_testatlog" in arglist:
+	pt=arglist.index("_testatlog")+1
+	if pt < len(arglist):
+		runopts['walkopts']['usemd5log']={'logpath':arglist[pt],'setsource':'source'}
+
 
 logfolder="/var/log/validates"
 checkmd5s.logAndCompTargets(targetList,logfolder,runopts)

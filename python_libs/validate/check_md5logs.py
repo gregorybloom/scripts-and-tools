@@ -41,19 +41,82 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 
 	if groupname not in logset.keys():
 		logset[groupname]={}
-
 	logpath = logfolder+'/md5vali/'+groupname+'/';
-#	print infosets.keys()
-	if 'foldersets' in infosets.keys():
+
+
+	if 'usemd5log' in md5opts['walkopts'].keys():
+
+		uselog=md5opts['walkopts']['usemd5log']['logpath']
+		if os.path.exists(uselog) and os.path.isfile(uselog):
+			print "Using ",uselog
+
+			if 'foldersets' in infosets.keys():
+				for setname,folderset in infosets['foldersets'].iteritems():
+					for sourcename,folderpath in folderset.iteritems():
+
+						if sourcename != md5opts['walkopts']['usemd5log']['setsource']:
+							continue
+						if sourcename not in foundlist.keys():
+							continue
+
+						if setname not in logset[groupname].keys():
+							logset[groupname][setname]={}
+
+						startpath=foundlist[sourcename]
+						targetpath=startpath+folderpath
+						targetpath = targetpath.replace('//','/')
+						targetpath = targetpath.rstrip('/')
+						targetpath = targetpath+'/'
+
+
+						logname= logpath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestr+'.txt'
+						driveutils.createNewLog(logname,True)
+						filelog = open(logname, "a")
+##################################
+
+						with open(uselog) as f:
+						    for rline in f.readlines():
+								fpath = None
+								groupsA = re.findall(r'^(?:[^,]+,){3}\s*(\/.*?\/\/.*\S)\s*$',rline)
+								groupsB = re.findall(r'^((?:[^,]+,){3})\s*\/.*?\/\/.*\S\s*$',rline)
+								fpath = groupsA[0]
+								fdeets = groupsB[0]
+
+								if re.match(r'^\/masterpath\/',fpath):
+									groups1 = re.findall(r'^\/masterpath\/(.*?)\/\/.*$',fpath)
+									groups2 = re.findall(r'^\/masterpath\/.*?\/\/(.*)$',fpath)
+									testgroupname=groups1[0]
+									testrelativepath=groups2[0]
+									if setname != testgroupname:
+										continue
+									testfullpath = targetpath+'/'+testrelativepath
+								else:
+									groups = re.findall(r'^(\/.*?)\/\/.*$',fpath)
+									testgrouppath=groups[0]
+									testgrouppath = testgrouppath.rstrip('/')
+									testgrouppath = testgrouppath+'/'
+									if testgrouppath != targetpath:
+										continue
+									testfullpath = fpath
+
+								filelog.write(fdeets+testfullpath+'\n')
+
+						filelog.close()
+						f.close()
+
+
+						loglist.append({'log':logname,'path':targetpath,'setname':setname,'sourcename':sourcename})
+						logset[groupname][setname][sourcename]=logname
+						masterpath=logpath+'master/';	#	md5vali-master-
+						mastset[groupname]=masterpath
+
+
+	elif 'foldersets' in infosets.keys():
 		for setname,folderset in infosets['foldersets'].iteritems():
-#			print '--','foldersets',setname
 			for sourcename,folderpath in folderset.iteritems():
-#				print '----',setname,sourcename,folderpath
 				if setname not in logset[groupname].keys():
-#					print 'new',logset[groupname].keys()
 					logset[groupname][setname]={}
 
-#				print '---- a',setname,sourcename,foundlist.keys()
 				if sourcename not in foundlist.keys():
 					continue
 				startpath=foundlist[sourcename]
@@ -61,13 +124,13 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 				logname= logpath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestr+'.txt'
 
 				driveutils.createNewLog(logname,False)
-				piecepath = startpath+folderpath
-				piecepath = piecepath.replace('//','/')
-				piecepath = piecepath.rstrip('/')
-				piecepath = piecepath+'/'
+				targetpath = startpath+folderpath
+				targetpath = targetpath.replace('//','/')
+				targetpath = targetpath.rstrip('/')
+				targetpath = targetpath+'/'
 				###### str replace // to /.  rstrip /. add /? (test each way)
 
-				filelist.beginMD5Walk(piecepath,logname,md5opts['walkopts'])
+				filelist.beginMD5Walk(targetpath,logname,md5opts['walkopts'])
 
 				if '_errs' in md5opts['walkopts'].keys():
 					if '_folders' in md5opts['walkopts']['_errs'].keys():
@@ -79,7 +142,7 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 							errset['folderload'][setname][sourcename]=[]
 						errset['folderload'][setname][sourcename].extend(md5opts['walkopts']['_errs']['_folders'])
 
-				loglist.append({'log':logname,'path':piecepath,'setname':setname})
+				loglist.append({'log':logname,'path':targetpath,'setname':setname,'sourcename':sourcename})
 				logset[groupname][setname][sourcename]=logname
 				masterpath=logpath+'master/';	#	md5vali-master-
 #				logset[name][setname]['master']=masterpath
@@ -181,7 +244,7 @@ def logAndCompTargets(targetlist, logfolder, md5opts=None):
 					startpath=foundlist[sourcename]
 
 					logname= logpath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestrF+'.txt'
-					loglist.append({'log':logname,'path':startpath+folderpath,'setname':setname})
+					loglist.append({'log':logname,'path':startpath+folderpath,'setname':setname,'sourcename':sourcename})
 					logset[groupname][setname][sourcename]=logname
 					masterpath=logpath+'master/';	#	md5vali-master-
 	#				logset[name][setname]['master']=masterpath
@@ -197,7 +260,7 @@ def logAndCompTargets(targetlist, logfolder, md5opts=None):
 			datasets=newdata
 
 
-		datasets['found']=foundlist
+		if len(datasets.keys()) > 0:
+			datasets['found']=foundlist
 
-
-		md5SourcesAndTargets(targetlist,logfolder,datasets,md5opts)
+			md5SourcesAndTargets(targetlist,logfolder,datasets,md5opts)

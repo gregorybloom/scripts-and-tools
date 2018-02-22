@@ -248,10 +248,8 @@ verifydriveflags() {
     type=${vals4[2]}
     DRIVE_FLAG=false
     for k in $(ls -l "$path"); do
-#      echo "$k," $(echo "$k" | grep -oP "^\-[\w\-\.\+]+\s*\d+\s+[\w\+]+\s+[\w\+]+\s+\d+\s+\w+\s+\d+\s+(?:\d+\:)?\d+\s+_DRIVEFLAG_\w+_\.txt\s*$")
       if echo "$k" | grep -qP "^\-[\w\-\.+]+\s*\d+\s+[\w\+]+\s+[\w\+]+\s+\d+\s+\w+\s+\d+\s+(?:\d+\:)?\d+\s+_DRIVEFLAG_\w+_\.txt\s*$"; then
         DRIVE_FLAG=$(echo "$k" | grep -oP "(?<=\s)_DRIVEFLAG_\w+_(?=\.txt\s*$)")
- #       echo "        2- $DRIVE_FLAG"
         break
       fi
     done
@@ -259,7 +257,6 @@ verifydriveflags() {
       continue
     fi
     echo "$opath,$path,$type,$DRIVE_FLAG" >> "$RUNTMPPATH/mounted.txt"
-    #    echo "$opath,$path,$type,$driveflag"
   done
 }
 findcopypaths() {
@@ -302,7 +299,10 @@ findcopypaths() {
             sourceflag=${vals6[2]}
             sourcepath=${vals6[3]}
             targetflag=${vals6[4]}
-            targetpath=${vals6[5]}
+            targetpathM=${vals6[5]}
+#	    targetpath=$(echo "$targetpathM")
+            targetpath=$(echo "$targetpathM" | sed -e "s/[]//g")
+
 
             DEST_FOUND=false
             SOURCE_FOUND=false
@@ -313,6 +313,7 @@ findcopypaths() {
                 SOURCE_FOUND=true
                 if [[ $SCRIPTPATH == $path* ]]; then
                   SOURCE_MATCHES_SELF=true
+
                   for n in $(cat "$RUNTMPPATH/mounted.txt"); do
                     IFS=',' read -ra vals7 <<< "$n"    #Convert string to array
                     targetflag2=${vals7[3]}
@@ -328,6 +329,10 @@ findcopypaths() {
                 drivepath=$(echo "$path")
                 echo "$runname,$copystep,$drivepath,$sourceflag,$sourcepath,$targetdrivepath,$targetflag,$targetpath" >> "$RUNTMPPATH/copypaths.txt"
                 echo "$runname,$copystep,$drivepath,$sourceflag,$sourcepath,$targetdrivepath,$targetflag,$targetpath"
+
+                if [ "$SOURCE_FOLDERPATH" == false ]; then
+		                SOURCE_FOLDERPATH="/$drivepath/"
+                fi
 
               elif [ "$SOURCE_MATCHES_SELF" == true ]; then
                 echo "destination drive '$targetflag' not found"
@@ -496,7 +501,7 @@ mailout() {
     SUBJECT="autobkup-PRE_ERROR: $thedate1 $RUN_TYPE"
     fileone="$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
     echo -e "$SUBJECT\n" > "$outfile"
-    echo "$thedate1  =  $thedate2" >> "$outfile"
+    echo -e "$thedate1  =  $thedate2\n" >> "$outfile"
     cat "$fileone" >> "$outfile"
     if [ "$ERROR_FAIL" == true ]; then
       fileone2="$RUNLOGPATH/log_errs-$LOGSUFFIX"
@@ -508,21 +513,22 @@ mailout() {
     fileone="$RUNLOGPATH/log_errs-$LOGSUFFIX"
     fileone2="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
     echo -e "$SUBJECT\n" > "$outfile"
-    echo "$thedate1  =  $thedate2" >> "$outfile"
+    echo -e "$thedate1  =  $thedate2\n" >> "$outfile"
     cat "$fileone" >> "$outfile"
     cat "$fileone2" >> "$outfile"
   elif [ "$type" == "prep_only" ]; then
     SUBJECT="autobkup-PREP SUMMARY: $thedate1 $RUN_TYPE"
     fileone="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
     echo -e "$SUBJECT\n" > "$outfile"
-    echo "$thedate1  =  $thedate2" >> "$outfile"
+    echo -e "$thedate1  =  $thedate2\n" >> "$outfile"
     cat "$fileone" >> "$outfile"
   elif [ "$type" == "summary" ]; then
     SUBJECT="autobkup-SUMMARY: $thedate1 $RUN_TYPE"
     fileone="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
     echo -e "$SUBJECT\n" > "$outfile"
-    echo "$thedate1  =  $thedate2" >> "$outfile"
+    echo -e "$thedate1  =  $thedate2\n" >> "$outfile"
     cat "$fileone" >> "$outfile"
+    echo "SENDING"
   fi
   if [ -f "$outfile" ]; then
     if [ "$type" == "pre_error" ] || [ "$type" == "error" ]; then
@@ -534,7 +540,7 @@ mailout() {
     if [ "$USE_EMAIL" == true ] && [ "$HAS_SWAKS" == true ] && [ ! -z "$_ALERTEMAIL" ] && [ -f "$_HOMEFOLDER/.swaksrc" ]; then
       scrape_swaks_config "$_HOMEFOLDER/"
 
-      sudo swaks --from "$SWAKFROM" --h-From "$_SWAKHFROM" -s "$SWAKPROTO" -tls -a LOGIN --auth-user "$SWAKUSER" --auth-password "$SWAKPASS" --header "Subject: $SUBJECT" --body "$fileone" -t "$_ALERTEMAIL"
+      sudo swaks --from "$SWAKFROM" --h-From "$_SWAKHFROM" -s "$SWAKPROTO" -tls -a LOGIN --auth-user "$SWAKUSER" --auth-password "$SWAKPASS" --header "Subject: $SUBJECT" --body "$outfile" -t "$_ALERTEMAIL"
       echo "sent to $_ALERTEMAIL." | wall
     else
       #      mail -s "$SUBJECT" "$USER" < "$outfile"
@@ -636,9 +642,23 @@ else
   loadmounts "mounted.txt"
 fi
 
+SOURCE_FOLDERPATH=false
 ERROR_FAIL=false
 verifydriveflags
 findcopypaths
+
+
+if [ "$ERROR_FAIL" == true ] || [ "$PRE_ERROR_FAIL" == true ]; then
+  thedate2="$(date +'%Y/%m/%d  %H:%M')"
+  touch "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+  mailout "pre_error"
+  exit 0
+fi
+ERRDUMP_FOLDERPATH="$SOURCE_FOLDERPATH/errdump/"
+mkdir -p "$ERRDUMP_FOLDERPATH"
+ERRDUMP_FILEPATH="$ERRDUMP_FOLDERPATH/errdump-$thedate.txt"
+echo "errdump: $ERRDUMP_FILEPATH"
+echo "logpath: $RUNLOGPATH"
 
 prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
 if [ "$VALID_CHECK" == true ]; then
@@ -668,17 +688,25 @@ if [ "$VALID_CHECK" == true ]; then
       targetdrivepath="$p"
 
       mkdir -p "$targetdrivepath/logs/"
+      touch "$tmpfile.2"
       rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile.2" "$vbaselog" "$targetdrivepath/logs/"
+
 
       if grep -qP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile.2"; then
         PRE_ERROR_FAIL=true
         ERROR_FAIL=true
         grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile.2" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+
+        echo "--a/1-- $vbaselog,$p" >> "$ERRDUMP_FILEPATH"
+        grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile.2" >> "$ERRDUMP_FILEPATH"
       fi
       if grep -qP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile.2"; then
         PRE_ERROR_FAIL=true
         ERROR_FAIL=true
         grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile.2" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+
+        echo "--a/2-- $vbaselog,$p" >> "$ERRDUMP_FILEPATH"
+        grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile.2" >> "$ERRDUMP_FILEPATH"
       fi
       if [ -f "$tmpfile.2" ]; then
         rm -f "$tmpfile.2"
@@ -698,6 +726,9 @@ if [ "$VALID_CHECK" == true ]; then
         touch "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
         echo -e "ERROR: CONFLICT FOUND IN VALIDATOR RUN:  '$vsummary'\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
         cat "$vsummary" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+
+        echo "--b/1-- $m" >> "$ERRDUMP_FILEPATH"
+        cat "$vsummary" >> "$ERRDUMP_FILEPATH"
         break
       fi
 #    rm -f "$RUNTMPPATH/rsynclog.txt"
@@ -739,9 +770,13 @@ if [ "$PRE_CHECK" == true ]; then
     echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp"
     if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
       if [ -d "$drivepath/$sourcepath" ]; then
-        rsync -hrltzWPSD --no-links --dry-run --delete --delete-after --no-compress --log-file="$RUNTMPPATH/rsynclog.txt" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+        echo "rsync dryrun deleteafter $drivepath/$sourcepath $targetdrivepath/$targetpath"
+        touch "$RUNTMPPATH/rsynclog.txt"
+       rsync -hrltzWPSD --no-links --dry-run --delete --delete-after --no-compress --log-file="$RUNTMPPATH/rsynclog.txt" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
       elif [ -f "$drivepath/$sourcepath" ]; then
-        rsync -hrltzWPSD --no-links --dry-run --no-compress --log-file="$RUNTMPPATH/rsynclog.txt" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+        echo "rsync dryrun $drivepath/$sourcepath $targetdrivepath/$targetpath"
+        touch "$RUNTMPPATH/rsynclog.txt"
+       rsync -hrltzWPSD --no-links --dry-run --no-compress --log-file="$RUNTMPPATH/rsynclog.txt" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
       fi
     elif [ ! -e "$drivepath/$sourcepath" ]; then
       LOOP_ERROR_FAIL=true
@@ -749,12 +784,18 @@ if [ "$PRE_CHECK" == true ]; then
       ERROR_FAIL=true
       echo -e "ERROR: PATH '$drivepath/$sourcepath' NOT FOUND for source drive '$sourceflag'\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
       echo -e "--------------------------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
+
+      echo "--c/1-- $j" >> "$ERRDUMP_FILEPATH"
+      echo "-- -- -- $drivepath/$sourcepath" >> "$ERRDUMP_FILEPATH"
     elif [ ! -e "$targetdrivepath/$targetpath" ]; then
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
       echo -e "ERROR: PATH '$targetdrivepath/$targetpath' NOT FOUND for target drive '$targetflag'\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
       echo -e "--------------------------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
+
+      echo "--c/2-- $j" >> "$ERRDUMP_FILEPATH"
+      echo "-- -- -- $targetdrivepath/$targetpath" >> "$ERRDUMP_FILEPATH"
     fi
 
     if [ ! "$?" == "0" ]; then
@@ -763,6 +804,9 @@ if [ "$PRE_CHECK" == true ]; then
       ERROR_FAIL=true
       errlabel=$(getrsyncerrcode "$?")
       echo -e "------ $? : $errlabel ------\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp"
+
+      echo "--c/3-- $j" >> "$ERRDUMP_FILEPATH"
+      echo "-- -- -- $? : $errlabel" >> "$ERRDUMP_FILEPATH"
     fi
 
     if grep -qP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt"; then
@@ -770,12 +814,18 @@ if [ "$PRE_CHECK" == true ]; then
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
       grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp"
+
+      echo "--c/4-- $j" >> "$ERRDUMP_FILEPATH"
+      grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt" >> "$ERRDUMP_FILEPATH"
     fi
     if grep -qP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt"; then
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
       grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp"
+
+      echo "--c/5-- $j" >> "$ERRDUMP_FILEPATH"
+      grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt" >> "$ERRDUMP_FILEPATH"
     fi
 
     rm -f "$RUNTMPPATH/rsynclog.txt"
@@ -832,8 +882,12 @@ for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
   echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
   if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
     if [ -d "$drivepath/$sourcepath" ]; then
+      echo "rsync deleteafter $drivepath/$sourcepath $targetdrivepath/$targetpath"
+      touch "$tmpfile"
       rsync -hrltvvzWPSD --no-links --delete --delete-after --stats --no-compress --log-file="$tmpfile" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
     elif [ -f "$drivepath/$sourcepath" ]; then
+      echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+      touch "$tmpfile"
       rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
     fi
   elif [ ! -e "$drivepath/$sourcepath" ]; then
@@ -841,28 +895,46 @@ for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
     LOOP_ERROR_FAIL=true
     echo -e "ERROR: PATH '$drivepath/$sourcepath' NOT FOUND for source drive '$sourceflag'\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
     echo -e "--------------------------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
+
+    echo "--d/1-- $j" >> "$ERRDUMP_FILEPATH"
+    echo -e "ERROR: PATH '$drivepath/$sourcepath' NOT FOUND for source drive '$sourceflag'\n" >> "$ERRDUMP_FILEPATH"
   elif [ ! -e "$targetdrivepath/$targetpath" ]; then
     ERROR_FAIL=true
     LOOP_ERROR_FAIL=true
     echo -e "ERROR: PATH '$targetdrivepath/$targetpath' NOT FOUND for target drive '$targetflag'\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
     echo -e "--------------------------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
+
+    echo "--d/2-- $j" >> "$ERRDUMP_FILEPATH"
+    echo -e "ERROR: PATH '$targetdrivepath/$targetpath' NOT FOUND for source drive '$targetflag'\n" >> "$ERRDUMP_FILEPATH"
   fi
 
-  if [ ! "$?" == "0" ]; then
+
+  if [ "$?" -eq "0" ]; then
+    echo "Successful rsync."
+  else
     ERROR_FAIL=true
     LOOP_ERROR_FAIL=true
     errlabel=$(getrsyncerrcode "$?")
     echo -e "------ $? : $errlabel ------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
+
+    echo "--e/1-- $j" >> "$ERRDUMP_FILEPATH"
+    echo -e "------ $? : $errlabel ------\n" >> "$ERRDUMP_FILEPATH"
   fi
   if grep -qP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile"; then
     ERROR_FAIL=true
     LOOP_ERROR_FAIL=true
     grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
+
+    echo "--e/2-- $j" >> "$ERRDUMP_FILEPATH"
+    grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile" >> "$ERRDUMP_FILEPATH"
   fi
   if grep -qP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile"; then
     ERROR_FAIL=true
     LOOP_ERROR_FAIL=true
     grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
+
+    echo "--e/3-- $j" >> "$ERRDUMP_FILEPATH"
+    grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile" >> "$ERRDUMP_FILEPATH"
   fi
 
 

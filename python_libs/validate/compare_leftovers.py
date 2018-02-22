@@ -6,7 +6,7 @@
 		fullpath = re.findall(r'(\/\/.*)$',logitem['line'])[0]
 		startline = re.findall(r'^(\w+,\s*\d+,[^,]+,\s*)\/',logitem['line'])[0]
 		masterline = startline+"/masterpath/"+logsetname+fullpath+"\n"
-
+#
 		# ADD TO MISSING LOG
 		if compset['ptype'] == "sXdXmP":
 			if '_holddata' not in useopts.keys():
