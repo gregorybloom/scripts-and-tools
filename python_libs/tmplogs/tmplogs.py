@@ -6,18 +6,14 @@ import csv
 def clearTmpMD5Logs(logtype,groupname,logfolder):
 	logpath = logfolder+'/'+logtype+'/'+groupname+'/';
 
-	if os.path.exists(logpath+'pieces/'):
-		try:
-			shutil.rmtree(logpath+'pieces/')
-		except OSError as exception:
-			print '*A* err on '+str(exception)
-			raise exception
-	if os.path.exists(logpath+'parts/'):
-		try:
-			shutil.rmtree(logpath+'parts/')
-		except OSError as exception:
-			print '*B* err on '+str(exception)
-			raise exception
+	temps=['pieces','parts','sections']
+	for tempfolder in temps:
+		if os.path.exists(logpath+tempfolder+'/'):
+			try:
+				shutil.rmtree(logpath+tempfolder+'/')
+			except OSError as exception:
+				print '*A* err on '+tempfolder+', '+str(exception)
+				raise exception
 
 def createNewTmpMD5Logs(logtype,groupname,timestr,foldersets,foundlist,logfolder,md5opts=None):
 	if md5opts is None:

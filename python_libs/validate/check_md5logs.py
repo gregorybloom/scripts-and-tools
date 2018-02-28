@@ -28,6 +28,89 @@ def concatLogGroups(logparts):
 	return newloglist
 
 
+
+def grabAMasterLog(masterpath,timestamp,useopts):
+	masterlog = getBestMaster(masterpath, useopts)
+
+	if masterlog == None:
+		vals = timestamp.split('-')
+		val1 = int(vals[0])
+		val2 = int(vals[1])-1
+		while( len(str(val2)) < 6 ):
+			# adds 0's to clock time denomination as necessary
+			val2="0"+str(val2)
+
+#			masterlog = 'md5vali-master-'+str(val1)+'-'+str(val2)+'.txt'
+		masterlog = 'master-'+str(val1)+'-'+str(val2)+'/'
+		masterlog += 'md5vali-master-'+str(val1)+'-'+str(val2)+'.txt'
+		driveutils.createNewLog(masterpath+masterlog,False)
+	masterlog=masterpath+masterlog
+	return masterlog
+
+def getBestMaster(masterpath,useopts):
+	def checkMasterName(val1,val2,masterpath):
+		val1i=val1
+		val2i=val2
+		mastername = buildMasterName(val1i,val2i)
+		mpath = masterpath+mastername
+		if os.path.exists(mpath):
+			return True
+		return False
+
+	def buildMasterName(val1,val2):
+		while( len(str(val1)) < 8 ):
+			# adds 0's to clock time denomination as necessary
+			val1="0"+str(val1)
+		while( len(str(val2)) < 6 ):
+			# adds 0's to clock time denomination as necessary
+			val2="0"+str(val2)
+		bestfit=str(val1)+'-'+str(val2)
+		bestmaster = 'master-'+bestfit+'/'
+		bestmaster += 'md5vali-master-'+bestfit+'.txt'
+		return bestmaster
+
+	if not os.path.exists(masterpath):
+		try:
+			os.makedirs(masterpath)
+		except OSError as exception:
+			if exception.errno != errno.EEXIST:
+				raise
+
+	highmaster = None
+	try:
+		masterlist = driveutils.readDir(masterpath)
+	except OSError as exception:
+		raise
+	if len(masterlist) == 0:
+		return None
+	masterlist.sort()
+
+	bestfit1=0
+	bestfit2=0
+	for mastern in masterlist:
+		namestr = str(mastern)
+#		if re.match('^md5vali-master-\d+-\d+\.txt\s*$',namestr):
+#			groups = re.findall(r'^md5vali-master-(\d+-\d+)\.txt\s*$',namestr)
+		if re.match('^master-\d+-\d+\s*$',namestr):
+			groups = re.findall(r'^master-(\d+-\d+)\s*$',namestr)
+			vals = groups[0].split('-')
+			val = int(vals[0])
+
+			if(val > bestfit1):
+				if(checkMasterName(val,int(vals[1]),masterpath)==True):
+					bestfit1=val
+					bestfit2=int(vals[1])
+			elif(val == bestfit1):
+				if(bestfit2 < int(vals[1])):
+					if(checkMasterName(val,int(vals[1]),masterpath)==True):
+						bestfit1=val
+						bestfit2=int(vals[1])
+
+	if(bestfit1 > 0) and (bestfit2 > 0):
+		bestmaster = buildMasterName(bestfit1,bestfit2)
+		return bestmaster
+
+
 def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=None):
 	if md5opts is None:
 		md5opts={}
@@ -72,7 +155,6 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 						logname= logpath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestr+'.txt'
 						driveutils.createNewLog(logname,True)
 						filelog = open(logname, "a")
-##################################
 
 						with open(uselog) as f:
 						    for rline in f.readlines():
@@ -150,6 +232,7 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 
 #				print '---- b',setname,sourcename,startpath,logname
 #				print '---- c',setname,sourcename,masterpath
+#	return {}
 
 	print
 	print ' -- saved logs -- '
@@ -171,26 +254,68 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 
 	return newdata
 
+def splitMasterLog(masterlog,logfolder,runname,timestamp):
+	logpath = logfolder+'/md5vali/'+runname+'/';
+	logpath += 'sections/'
+
+	masterpieces={}
+	with open(masterlog) as masterfile:
+	    for rline in masterfile.readlines():
+			fpath = None
+			groupsA = re.findall(r'^(?:[^,]+,){3}\s*(\/.*?\/\/.*\S)\s*$',rline)
+			groupsB = re.findall(r'^((?:[^,]+,){3})\s*\/.*?\/\/.*\S\s*$',rline)
+			fpath = groupsA[0]
+			fdeets = groupsB[0]
+
+			if re.match(r'^\/masterpath\/',fpath):
+				groups1 = re.findall(r'^\/masterpath\/(.*?)\/\/.*$',fpath)
+				setname=groups1[0]
+
+				logpiece = logpath+'/'+setname+'/masterpiece.txt'
+
+				if not os.path.exists(logpiece):
+					driveutils.createNewLog(logpiece,True)
+
+				if setname not in masterpieces.keys():
+					masterpieces[setname]={}
+				if 'path' not in masterpieces[setname].keys():
+					masterpieces[setname]['path']=logpiece
+				if 'obj' not in masterpieces[setname].keys():
+					masterpieces[setname]['obj']=open(logpiece,"a")
+
+				masterpieces[setname]['obj'].write(rline)
+
+	masterfile.close()
+
+	for setname,mast in masterpieces.iteritems():
+		if 'obj' in masterpieces[setname].keys():
+			masterpieces[setname]['obj'].close()
+			del masterpieces[setname]['obj']
+
+	return masterpieces
+
+
+
+
 def md5SourcesAndTargets(targetlist,logfolder,datasets,md5opts=None):
 	if md5opts is None:
 		md5opts={}
 	if 'compopts' not in md5opts.keys():
 		md5opts['compopts']={}
 
-	print "A",datasets['logset'].keys(),datasets['mastset'].keys()
 	for runname,loglist in datasets['logset'].iteritems():
-#		print
-#		print 'xxxxxxxxxxxxxxx',runname
-#		print targetlist[runname].keys(),targetlist[runname]
-		if runname in datasets['mastset'].keys():
-#			infoset={}
-#			infoset['matchingsets']={}
-#			infoset['matchingsets']
 
-#			print loglist,runname, datasets['mastset'][runname]
-#			print datasets['timestr'],datasets.keys(),md5opts['compopts']
-#			print
-			comparedata.beginCompareStage(loglist,runname,datasets['mastset'][runname],datasets['timestr'],targetlist,datasets,md5opts['compopts'])
+		masterroute = datasets['mastset'][runname]
+
+		if 'usemd5log' in md5opts['compopts'].keys() and 'logpath' in md5opts['compopts']['usemd5log'].keys():
+			masterlog=md5opts['compopts']['usemd5log']['logpath']
+		else:
+			masterlog=grabAMasterLog(masterroute,datasets['timestr'],md5opts['compopts'])
+		masterlogset=splitMasterLog(masterlog,logfolder,runname,datasets['timestr'])
+
+		if runname in datasets['mastset'].keys():
+			print '========================================='
+			comparedata.beginCompareStage(loglist,runname,masterlogset,datasets['mastset'][runname],datasets['timestr'],targetlist,datasets,md5opts['compopts'])
 
 def logAndCompTargets(targetlist, logfolder, md5opts=None):
 	if md5opts is None:

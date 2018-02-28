@@ -20,69 +20,6 @@ def sortLogByPath(logpath):
 	os.rename(logpath+".tmp",logpath)
 
 
-def getBestMaster(masterpath,useopts):
-	def checkMasterName(val1,val2,masterpath):
-		val1i=val1
-		val2i=val2
-		mastername = buildMasterName(val1i,val2i)
-		mpath = masterpath+mastername
-		if os.path.exists(mpath):
-			return True
-		return False
-
-	def buildMasterName(val1,val2):
-		while( len(str(val1)) < 8 ):
-			# adds 0's to clock time denomination as necessary
-			val1="0"+str(val1)
-		while( len(str(val2)) < 6 ):
-			# adds 0's to clock time denomination as necessary
-			val2="0"+str(val2)
-		bestfit=str(val1)+'-'+str(val2)
-		bestmaster = 'master-'+bestfit+'/'
-		bestmaster += 'md5vali-master-'+bestfit+'.txt'
-		return bestmaster
-
-	if not os.path.exists(masterpath):
-		try:
-			os.makedirs(masterpath)
-		except OSError as exception:
-			if exception.errno != errno.EEXIST:
-				raise
-
-	highmaster = None
-	try:
-		masterlist = driveutils.readDir(masterpath)
-	except OSError as exception:
-		raise
-	if len(masterlist) == 0:
-		return None
-	masterlist.sort()
-
-	bestfit1=0
-	bestfit2=0
-	for mastern in masterlist:
-		namestr = str(mastern)
-#		if re.match('^md5vali-master-\d+-\d+\.txt\s*$',namestr):
-#			groups = re.findall(r'^md5vali-master-(\d+-\d+)\.txt\s*$',namestr)
-		if re.match('^master-\d+-\d+\s*$',namestr):
-			groups = re.findall(r'^master-(\d+-\d+)\s*$',namestr)
-			vals = groups[0].split('-')
-			val = int(vals[0])
-
-			if(val > bestfit1):
-				if(checkMasterName(val,int(vals[1]),masterpath)==True):
-					bestfit1=val
-					bestfit2=int(vals[1])
-			elif(val == bestfit1):
-				if(bestfit2 < int(vals[1])):
-					if(checkMasterName(val,int(vals[1]),masterpath)==True):
-						bestfit1=val
-						bestfit2=int(vals[1])
-
-	if(bestfit1 > 0) and (bestfit2 > 0):
-		bestmaster = buildMasterName(bestfit1,bestfit2)
-		return bestmaster
-
 def logMissedFolders(datasets,summarylog,useopts):
 
 	if '_holddata' in useopts.keys():
@@ -195,25 +132,7 @@ def actOnUseOpts(stage,useopts,steplist,masterlist,runname,logsetname,compSET):
 
 ##################################################
 
-def beginCompareStage(loglist,runname,masterroute,timestamp,targetlist,datasets,useopts=None):
-
-	def grabAMasterLog(masterpath,timestamp):
-		masterlog = getBestMaster(masterpath, useopts)
-
-		if masterlog == None:
-			vals = timestamp.split('-')
-			val1 = int(vals[0])
-			val2 = int(vals[1])-1
-			while( len(str(val2)) < 6 ):
-				# adds 0's to clock time denomination as necessary
-				val2="0"+str(val2)
-
-#			masterlog = 'md5vali-master-'+str(val1)+'-'+str(val2)+'.txt'
-			masterlog = 'master-'+str(val1)+'-'+str(val2)+'/'
-			masterlog += 'md5vali-master-'+str(val1)+'-'+str(val2)+'.txt'
-			driveutils.createNewLog(masterpath+masterlog,False)
-		masterlog=masterpath+masterlog
-		return masterlog
+def beginCompareStage(loglist,runname,masterlogset,masterroute,timestamp,targetlist,datasets,useopts=None):
 
 	if useopts is None:
 		useopts={}
@@ -221,10 +140,6 @@ def beginCompareStage(loglist,runname,masterroute,timestamp,targetlist,datasets,
 
 	debuglog = masterroute+'master-'+timestamp+'/' + 'md5vali-debug-'+datasets['timestr']+'.txt'
 
-	if 'usemd5log' in useopts.keys() and 'logpath' in useopts['usemd5log'].keys():
-		masterlog=useopts['usemd5log']['logpath']
-	else:
-		masterlog=grabAMasterLog(masterroute,timestamp)
 
 #	newmasterlog=masterroute+'md5vali-master-'+timestamp+'.txt'
 	newmasterlog=masterroute+'master-'+timestamp+'/'
@@ -241,7 +156,9 @@ def beginCompareStage(loglist,runname,masterroute,timestamp,targetlist,datasets,
 			raise
 			return
 
-		compareSourcesAndTargets(runname,masterlog,newmasterlog,loglist[logsetname],logsetname,targetlist,datasets,useopts)
+		if logsetname in masterlogset.keys():
+			masterlog = masterlogset[logsetname]['path']
+			compareSourcesAndTargets(runname,masterlog,newmasterlog,loglist[logsetname],logsetname,targetlist,datasets,useopts)
 
 
 	summarylog = masterroute+'md5vali-summary-'+timestamp+'.txt'
@@ -256,6 +173,7 @@ def beginCompareStage(loglist,runname,masterroute,timestamp,targetlist,datasets,
 	sortLogByPath(newmasterlog)
 
 	sumlist={}
+############################### BROKE AT HERE #######################################
 	for runname,runset in useopts['_holddata']['totals'].iteritems():
 		if runname not in sumlist.keys():
 			sumlist[runname]={}
@@ -313,11 +231,15 @@ def beginCompareStage(loglist,runname,masterroute,timestamp,targetlist,datasets,
 	if 'errset' in datasets.keys():
 		print
 		print '----------------------------------------------'
+		driveutils.addToLog( '\n----------------------------------------------\n', summarylog )
 		for typename,typelist in datasets['errset'].iteritems():
 			print '------------------',typename,'-----------------------'
+			driveutils.addToLog( '------------------'+typename+'-----------------------\n', summarylog )
 			for item in typelist:
 				print item
+				driveutils.addToLog( item+'\n', summarylog )
 		print '----------------------------------------------'
+		driveutils.addToLog( '----------------------------------------------\n\n', summarylog )
 		print
 
 

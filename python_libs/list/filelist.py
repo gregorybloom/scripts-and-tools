@@ -40,7 +40,8 @@ def md5Walk(base,path,logname,walkopts=None):
 
 	fileslist.sort()
 
-#	print ' v '+base+'/'+path
+	if ix > 10000:
+		print ix,' v '+base+'/'+path
 	for filen in fileslist:
 		namestr = str(filen)
 		pathTo = base+"/"+path+'/'+namestr
@@ -66,11 +67,12 @@ def md5Walk(base,path,logname,walkopts=None):
 				logged=True
 
 			if logged:
+				if 'printon' in walkopts.keys():
+					if (ix % walkopts['printon'])==0:
+						print walkopts['printon'],' logged '+pathTo
 				driveutils.logThisFile( base+"/"+path+'/', namestr, logname )
 				if 'printon' in walkopts.keys():
 					ix = ix+1
-#					if (ix % walkopts['printon'])==0:
-#						print 'logged '+pathTo
 #				else:
 #					print 'logged '+pathTo
 			gc = gc+1

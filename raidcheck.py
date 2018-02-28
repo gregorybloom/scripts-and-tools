@@ -27,16 +27,16 @@ for name in targetList['raid_backup']['file']:
 
 targetList['raid_backup']['foldersets']={}
 
-targetList['raid_backup']['foldersets']['videoset']={}
-targetList['raid_backup']['foldersets']['videoset']['source']='/Media/Videos'
-targetList['raid_backup']['foldersets']['videoset']['target2']='/RAID_BACKUP/Media/Videos'
-targetList['raid_backup']['foldersets']['videoset']['target4']='/RAID_BACKUP/Media/Videos'
+#targetList['raid_backup']['foldersets']['videoset']={}
+#targetList['raid_backup']['foldersets']['videoset']['source']='/Media/Videos'
+#targetList['raid_backup']['foldersets']['videoset']['target2']='/RAID_BACKUP/Media/Videos'
+#targetList['raid_backup']['foldersets']['videoset']['target4']='/RAID_BACKUP/Media/Videos'
 
 
-targetList['raid_backup']['foldersets']['cloudset']={}
-targetList['raid_backup']['foldersets']['cloudset']['source']='/CLOUD_BACKUP'
-targetList['raid_backup']['foldersets']['cloudset']['target1']='/RAID_BACKUP/CLOUD_BACKUP'
-targetList['raid_backup']['foldersets']['cloudset']['target3']='/RAID_BACKUP/CLOUD_BACKUP'
+#targetList['raid_backup']['foldersets']['cloudset']={}
+#targetList['raid_backup']['foldersets']['cloudset']['source']='/CLOUD_BACKUP'
+#targetList['raid_backup']['foldersets']['cloudset']['target1']='/RAID_BACKUP/CLOUD_BACKUP'
+#targetList['raid_backup']['foldersets']['cloudset']['target3']='/RAID_BACKUP/CLOUD_BACKUP'
 targetList['raid_backup']['foldersets']['dataset']={}
 targetList['raid_backup']['foldersets']['dataset']['source']='/Data'
 targetList['raid_backup']['foldersets']['dataset']['target1']='/RAID_BACKUP/Data'
@@ -45,22 +45,22 @@ targetList['raid_backup']['foldersets']['miscset']={}
 targetList['raid_backup']['foldersets']['miscset']['source']='/Misc'
 targetList['raid_backup']['foldersets']['miscset']['target1']='/RAID_BACKUP/Misc'
 targetList['raid_backup']['foldersets']['miscset']['target3']='/RAID_BACKUP/Misc'
-targetList['raid_backup']['foldersets']['projset']={}
-targetList['raid_backup']['foldersets']['projset']['source']='/Projects'
-targetList['raid_backup']['foldersets']['projset']['target1']='/RAID_BACKUP/Projects'
-targetList['raid_backup']['foldersets']['projset']['target3']='/RAID_BACKUP/Projects'
+#targetList['raid_backup']['foldersets']['projset']={}
+#targetList['raid_backup']['foldersets']['projset']['source']='/Projects'
+#targetList['raid_backup']['foldersets']['projset']['target1']='/RAID_BACKUP/Projects'
+#targetList['raid_backup']['foldersets']['projset']['target3']='/RAID_BACKUP/Projects'
 targetList['raid_backup']['foldersets']['servscriptset']={}
 targetList['raid_backup']['foldersets']['servscriptset']['source']='/SERVER_SCRIPTS'
 targetList['raid_backup']['foldersets']['servscriptset']['target1']='/RAID_BACKUP/SERVER_SCRIPTS'
 targetList['raid_backup']['foldersets']['servscriptset']['target3']='/RAID_BACKUP/SERVER_SCRIPTS'
-targetList['raid_backup']['foldersets']['sidedriveset']={}
-targetList['raid_backup']['foldersets']['sidedriveset']['source']='/SIDE_DRIVES'
-targetList['raid_backup']['foldersets']['sidedriveset']['target1']='/RAID_BACKUP/SIDE_DRIVES'
-targetList['raid_backup']['foldersets']['sidedriveset']['target3']='/RAID_BACKUP/SIDE_DRIVES'
-targetList['raid_backup']['foldersets']['softset']={}
-targetList['raid_backup']['foldersets']['softset']['source']='/Software'
-targetList['raid_backup']['foldersets']['softset']['target1']='/RAID_BACKUP/Software'
-targetList['raid_backup']['foldersets']['softset']['target3']='/RAID_BACKUP/Software'
+#targetList['raid_backup']['foldersets']['sidedriveset']={}
+#targetList['raid_backup']['foldersets']['sidedriveset']['source']='/SIDE_DRIVES'
+#targetList['raid_backup']['foldersets']['sidedriveset']['target1']='/RAID_BACKUP/SIDE_DRIVES'
+#targetList['raid_backup']['foldersets']['sidedriveset']['target3']='/RAID_BACKUP/SIDE_DRIVES'
+#targetList['raid_backup']['foldersets']['softset']={}
+#targetList['raid_backup']['foldersets']['softset']['source']='/Software'
+#targetList['raid_backup']['foldersets']['softset']['target1']='/RAID_BACKUP/Software'
+#targetList['raid_backup']['foldersets']['softset']['target3']='/RAID_BACKUP/Software'
 targetList['raid_backup']['foldersets']['spiderdumpset']={}
 targetList['raid_backup']['foldersets']['spiderdumpset']['source']='/SPIDER_DUMP'
 targetList['raid_backup']['foldersets']['spiderdumpset']['target1']='/RAID_BACKUP/SPIDER_DUMP'
@@ -91,17 +91,22 @@ targetList['raid_backup']['foldersets']['m_unsortedset']['target1']='/RAID_BACKU
 targetList['raid_backup']['foldersets']['m_unsortedset']['target3']='/RAID_BACKUP/Media/-unsorted'
 
 
-#targetList['raid_backup']['foldersets'] = {'videoset': targetList['raid_backup']['foldersets']['videoset']}
 
 
 runopts={}
 runopts['walkopts']={}
 runopts['compopts']={}
+#runopts['walkopts']['printon']=10
 
 if "_askdropold" in arglist:
 	runopts['compopts']['askdropold']=1
 elif "_dropold" in arglist:
 	runopts['compopts']['dropold']=1
+
+if "_printon" in arglist:
+	pt=arglist.index("_printon")+1
+	if pt < len(arglist):
+		runopts['walkopts']['printon']=int(arglist[pt])
 
 
 runopts['walkopts']['filters']={'deny':["garbage"],'allowonly':["imgs","videos","docs","zip","music","misc"]}
