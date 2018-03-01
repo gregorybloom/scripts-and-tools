@@ -27,16 +27,16 @@ for name in targetList['raid_backup']['file']:
 
 targetList['raid_backup']['foldersets']={}
 
-#targetList['raid_backup']['foldersets']['videoset']={}
-#targetList['raid_backup']['foldersets']['videoset']['source']='/Media/Videos'
-#targetList['raid_backup']['foldersets']['videoset']['target2']='/RAID_BACKUP/Media/Videos'
-#targetList['raid_backup']['foldersets']['videoset']['target4']='/RAID_BACKUP/Media/Videos'
+targetList['raid_backup']['foldersets']['videoset']={}
+targetList['raid_backup']['foldersets']['videoset']['source']='/Media/Videos'
+targetList['raid_backup']['foldersets']['videoset']['target2']='/RAID_BACKUP/Media/Videos'
+targetList['raid_backup']['foldersets']['videoset']['target4']='/RAID_BACKUP/Media/Videos'
 
 
-#targetList['raid_backup']['foldersets']['cloudset']={}
-#targetList['raid_backup']['foldersets']['cloudset']['source']='/CLOUD_BACKUP'
-#targetList['raid_backup']['foldersets']['cloudset']['target1']='/RAID_BACKUP/CLOUD_BACKUP'
-#targetList['raid_backup']['foldersets']['cloudset']['target3']='/RAID_BACKUP/CLOUD_BACKUP'
+targetList['raid_backup']['foldersets']['cloudset']={}
+targetList['raid_backup']['foldersets']['cloudset']['source']='/CLOUD_BACKUP'
+targetList['raid_backup']['foldersets']['cloudset']['target1']='/RAID_BACKUP/CLOUD_BACKUP'
+targetList['raid_backup']['foldersets']['cloudset']['target3']='/RAID_BACKUP/CLOUD_BACKUP'
 targetList['raid_backup']['foldersets']['dataset']={}
 targetList['raid_backup']['foldersets']['dataset']['source']='/Data'
 targetList['raid_backup']['foldersets']['dataset']['target1']='/RAID_BACKUP/Data'
@@ -45,22 +45,22 @@ targetList['raid_backup']['foldersets']['miscset']={}
 targetList['raid_backup']['foldersets']['miscset']['source']='/Misc'
 targetList['raid_backup']['foldersets']['miscset']['target1']='/RAID_BACKUP/Misc'
 targetList['raid_backup']['foldersets']['miscset']['target3']='/RAID_BACKUP/Misc'
-#targetList['raid_backup']['foldersets']['projset']={}
-#targetList['raid_backup']['foldersets']['projset']['source']='/Projects'
-#targetList['raid_backup']['foldersets']['projset']['target1']='/RAID_BACKUP/Projects'
-#targetList['raid_backup']['foldersets']['projset']['target3']='/RAID_BACKUP/Projects'
+targetList['raid_backup']['foldersets']['projset']={}
+targetList['raid_backup']['foldersets']['projset']['source']='/Projects'
+targetList['raid_backup']['foldersets']['projset']['target1']='/RAID_BACKUP/Projects'
+targetList['raid_backup']['foldersets']['projset']['target3']='/RAID_BACKUP/Projects'
 targetList['raid_backup']['foldersets']['servscriptset']={}
 targetList['raid_backup']['foldersets']['servscriptset']['source']='/SERVER_SCRIPTS'
 targetList['raid_backup']['foldersets']['servscriptset']['target1']='/RAID_BACKUP/SERVER_SCRIPTS'
 targetList['raid_backup']['foldersets']['servscriptset']['target3']='/RAID_BACKUP/SERVER_SCRIPTS'
-#targetList['raid_backup']['foldersets']['sidedriveset']={}
-#targetList['raid_backup']['foldersets']['sidedriveset']['source']='/SIDE_DRIVES'
-#targetList['raid_backup']['foldersets']['sidedriveset']['target1']='/RAID_BACKUP/SIDE_DRIVES'
-#targetList['raid_backup']['foldersets']['sidedriveset']['target3']='/RAID_BACKUP/SIDE_DRIVES'
-#targetList['raid_backup']['foldersets']['softset']={}
-#targetList['raid_backup']['foldersets']['softset']['source']='/Software'
-#targetList['raid_backup']['foldersets']['softset']['target1']='/RAID_BACKUP/Software'
-#targetList['raid_backup']['foldersets']['softset']['target3']='/RAID_BACKUP/Software'
+targetList['raid_backup']['foldersets']['sidedriveset']={}
+targetList['raid_backup']['foldersets']['sidedriveset']['source']='/SIDE_DRIVES'
+targetList['raid_backup']['foldersets']['sidedriveset']['target1']='/RAID_BACKUP/SIDE_DRIVES'
+targetList['raid_backup']['foldersets']['sidedriveset']['target3']='/RAID_BACKUP/SIDE_DRIVES'
+targetList['raid_backup']['foldersets']['softset']={}
+targetList['raid_backup']['foldersets']['softset']['source']='/Software'
+targetList['raid_backup']['foldersets']['softset']['target1']='/RAID_BACKUP/Software'
+targetList['raid_backup']['foldersets']['softset']['target3']='/RAID_BACKUP/Software'
 targetList['raid_backup']['foldersets']['spiderdumpset']={}
 targetList['raid_backup']['foldersets']['spiderdumpset']['source']='/SPIDER_DUMP'
 targetList['raid_backup']['foldersets']['spiderdumpset']['target1']='/RAID_BACKUP/SPIDER_DUMP'
@@ -122,6 +122,10 @@ if "_testatlog" in arglist:
 
 
 logfolder="/var/log/validates"
-checkmd5s.logAndCompTargets(targetList,logfolder,runopts)
+tmpfolder="/tmp/validates"
+checkmd5s.logAndCompTargets(targetList,logfolder,tmpfolder,runopts)
+
+#	https://askubuntu.com/questions/380238/how-to-clean-tmp
+#	find /tmp -ctime +10 -exec rm -rf {} +
 
 ###	/etc/fstab			-- scan/parse this for mounted info

@@ -96,6 +96,10 @@ def getBestMaster(masterpath,useopts):
 			vals = groups[0].split('-')
 			val = int(vals[0])
 
+			summaryname = 'md5vali-summary-'+val+'.txt'
+			if not summaryname in masterlist:
+				continue
+
 			if(val > bestfit1):
 				if(checkMasterName(val,int(vals[1]),masterpath)==True):
 					bestfit1=val
@@ -110,8 +114,7 @@ def getBestMaster(masterpath,useopts):
 		bestmaster = buildMasterName(bestfit1,bestfit2)
 		return bestmaster
 
-
-def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=None):
+def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,tmpfolder,md5opts=None):
 	if md5opts is None:
 		md5opts={}
 	if 'walkopts' not in md5opts.keys():
@@ -125,7 +128,7 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 	if groupname not in logset.keys():
 		logset[groupname]={}
 	logpath = logfolder+'/md5vali/'+groupname+'/';
-
+	tmppath = tmpfolder+'/md5vali/'+groupname+'/'+timestr+'/';
 
 	if 'usemd5log' in md5opts['walkopts'].keys():
 
@@ -152,7 +155,7 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 						targetpath = targetpath+'/'
 
 
-						logname= logpath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestr+'.txt'
+						logname= tmppath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestr+'.txt'
 						driveutils.createNewLog(logname,True)
 						filelog = open(logname, "a")
 
@@ -203,7 +206,7 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 					continue
 				startpath=foundlist[sourcename]
 
-				logname= logpath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestr+'.txt'
+				logname= tmppath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestr+'.txt'
 
 				driveutils.createNewLog(logname,False)
 				targetpath = startpath+folderpath
@@ -254,9 +257,9 @@ def createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts=N
 
 	return newdata
 
-def splitMasterLog(masterlog,logfolder,runname,timestamp):
-	logpath = logfolder+'/md5vali/'+runname+'/';
-	logpath += 'sections/'
+def splitMasterLog(masterlog,logfolder,tmpfolder,runname,timestamp):
+	tmppath = tmpfolder+'/md5vali/'+groupname+'/'+timestamp+'/';
+	tmppath += 'sections/'
 
 	masterpieces={}
 	with open(masterlog) as masterfile:
@@ -271,7 +274,7 @@ def splitMasterLog(masterlog,logfolder,runname,timestamp):
 				groups1 = re.findall(r'^\/masterpath\/(.*?)\/\/.*$',fpath)
 				setname=groups1[0]
 
-				logpiece = logpath+'/'+setname+'/masterpiece.txt'
+				logpiece = tmppath+'/'+setname+'/masterpiece.txt'
 
 				if not os.path.exists(logpiece):
 					driveutils.createNewLog(logpiece,True)
@@ -297,7 +300,7 @@ def splitMasterLog(masterlog,logfolder,runname,timestamp):
 
 
 
-def md5SourcesAndTargets(targetlist,logfolder,datasets,md5opts=None):
+def md5SourcesAndTargets(targetlist,logfolder,tmpfolder,datasets,md5opts=None):
 	if md5opts is None:
 		md5opts={}
 	if 'compopts' not in md5opts.keys():
@@ -311,13 +314,13 @@ def md5SourcesAndTargets(targetlist,logfolder,datasets,md5opts=None):
 			masterlog=md5opts['compopts']['usemd5log']['logpath']
 		else:
 			masterlog=grabAMasterLog(masterroute,datasets['timestr'],md5opts['compopts'])
-		masterlogset=splitMasterLog(masterlog,logfolder,runname,datasets['timestr'])
+		masterlogset=splitMasterLog(masterlog,logfolder,tmpfolder,runname,datasets['timestr'])
 
 		if runname in datasets['mastset'].keys():
 			print '========================================='
 			comparedata.beginCompareStage(loglist,runname,masterlogset,datasets['mastset'][runname],datasets['timestr'],targetlist,datasets,md5opts['compopts'])
 
-def logAndCompTargets(targetlist, logfolder, md5opts=None):
+def logAndCompTargets(targetlist, logfolder,tmpfolder, md5opts=None):
 	if md5opts is None:
 		md5opts={}
 
@@ -333,11 +336,12 @@ def logAndCompTargets(targetlist, logfolder, md5opts=None):
 #		fake = 1
 		if fake is None or fake == 0:
 			tmplogs.clearTmpMD5Logs('md5vali',groupname,logfolder)
-			datasets = createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,md5opts)
+			datasets = createNewTmpMD5Logs(groupname,timestr,infosets,foundlist,logfolder,tmpfolder,md5opts)
 
 		if fake is not None and fake == 1:
 			groupname='gmac_backup'
 			timestrF = "20170622-160958"
+			tmppath = tmpfolder+'/md5vali/'+groupname+'/'+timestrF+'/';
 			logpath = logfolder+'/md5vali/'+groupname+'/';
 			md5opts['compopts']['dropold']=True
 			if 'askdropold' in md5opts['compopts'].keys():
@@ -368,7 +372,7 @@ def logAndCompTargets(targetlist, logfolder, md5opts=None):
 				for sourcename,folderpath in folderset.iteritems():
 					startpath=foundlist[sourcename]
 
-					logname= logpath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestrF+'.txt'
+					logname= tmppath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestrF+'.txt'
 					loglist.append({'log':logname,'path':startpath+folderpath,'setname':setname,'sourcename':sourcename})
 					logset[groupname][setname][sourcename]=logname
 					masterpath=logpath+'master/';	#	md5vali-master-
@@ -388,4 +392,16 @@ def logAndCompTargets(targetlist, logfolder, md5opts=None):
 		if len(datasets.keys()) > 0:
 			datasets['found']=foundlist
 
-			md5SourcesAndTargets(targetlist,logfolder,datasets,md5opts)
+			md5SourcesAndTargets(targetlist,logfolder,tmpfolder,datasets,md5opts)
+
+
+		tmparr=['pieces', 'sections']
+		tmppath = tmpfolder+'/md5vali/'+groupname+'/'+timestrF+'/';
+		logpath = logfolder+'/md5vali/'+groupname+'/';
+
+		for tmp in tmparr:
+			l = logpath+tmp
+			l2 = tmppath+tmp
+			if os.path.exists(l):
+				shutil.rmtree(l)
+			shutil.copytree(l2,l)
