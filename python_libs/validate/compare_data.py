@@ -132,7 +132,7 @@ def actOnUseOpts(stage,useopts,steplist,masterlist,runname,logsetname,compSET):
 
 ##################################################
 
-def beginCompareStage(loglist,runname,masterlogset,masterroute,timestamp,targetlist,datasets,useopts=None):
+def beginCompareStage(logsetlist,runname,masterlogset,masterroute,timestamp,targetlist,datasets,useopts=None):
 
 	if useopts is None:
 		useopts={}
@@ -141,13 +141,12 @@ def beginCompareStage(loglist,runname,masterlogset,masterroute,timestamp,targetl
 	debuglog = masterroute+'master-'+timestamp+'/' + 'md5vali-debug-'+datasets['timestr']+'.txt'
 
 
-#	newmasterlog=masterroute+'md5vali-master-'+timestamp+'.txt'
 	newmasterlog=masterroute+'master-'+timestamp+'/'
 	newmasterlog+='md5vali-master-'+timestamp+'.txt'
-#	print runname,masterlog,loglist
 
 
-	loglistkeys = loglist.keys()
+	##  Grab List of SetNames from datasets['logset'][runname]
+	loglistkeys = logsetlist.keys()
 	loglistkeys.sort()
 	for logsetname in loglistkeys:
 		if logsetname == "_oldmaster" or logsetname == "newmaster":
@@ -158,7 +157,7 @@ def beginCompareStage(loglist,runname,masterlogset,masterroute,timestamp,targetl
 
 		if logsetname in masterlogset.keys():
 			masterlog = masterlogset[logsetname]['path']
-			compareSourcesAndTargets(runname,masterlog,newmasterlog,loglist[logsetname],logsetname,targetlist,datasets,useopts)
+			compareSourcesAndTargets(runname,masterlog,newmasterlog,logsetlist[logsetname],logsetname,targetlist,datasets,useopts)
 
 
 	summarylog = masterroute+'md5vali-summary-'+timestamp+'.txt'
@@ -178,13 +177,13 @@ def beginCompareStage(loglist,runname,masterlogset,masterroute,timestamp,targetl
 		if runname not in sumlist.keys():
 			sumlist[runname]={}
 		for logsetname,logset in useopts['_holddata']['totals'][runname].iteritems():
-			for tname,nameset in useopts['_holddata']['totals'][runname][logsetname].iteritems():
-				if tname not in sumlist[runname].keys():
-					sumlist[runname][tname]={}
+			for sourcename,nameset in useopts['_holddata']['totals'][runname][logsetname].iteritems():
+				if sourcename not in sumlist[runname].keys():
+					sumlist[runname][sourcename]={}
 				for tresult,val in nameset.iteritems():
-					if tresult not in sumlist[runname][tname].keys():
-						sumlist[runname][tname][tresult]=0
-					sumlist[runname][tname][tresult]+=val
+					if tresult not in sumlist[runname][sourcename].keys():
+						sumlist[runname][sourcename][tresult]=0
+					sumlist[runname][sourcename][tresult]+=val
 
 	print
 	print '----------------------------------------------'
@@ -194,12 +193,12 @@ def beginCompareStage(loglist,runname,masterlogset,masterroute,timestamp,targetl
 
 	for runname,runset in useopts['_holddata']['totals'].iteritems():
 		for logsetname,logset in useopts['_holddata']['totals'][runname].iteritems():
-			for tname,nameset in useopts['_holddata']['totals'][runname][logsetname].iteritems():
+			for sourcename,nameset in useopts['_holddata']['totals'][runname][logsetname].iteritems():
 				strr=""
 				for tresult,val in nameset.iteritems():
 					strr=strr+tresult+"="+str(val)+'  '
-				print ' - totals: ',runname,'-',logsetname,'-',tname,' : '+strr.rstrip()
-				driveutils.addToLog( ' - totals:  '+runname+' - '+logsetname+' - '+tname+'  :  '+strr.rstrip()+"\n", summarylog )
+				print ' - totals: ',runname,'-',logsetname,'-',sourcename,' : '+strr.rstrip()
+				driveutils.addToLog( ' - totals:  '+runname+' - '+logsetname+' - '+sourcename+'  :  '+strr.rstrip()+"\n", summarylog )
 #			useopts['_holddata']['totals'][runname][logsetname][tname][tresult]+=1
 	print '----------------------------------------------'
 	print '-----------------overall-----------------------'
@@ -207,12 +206,12 @@ def beginCompareStage(loglist,runname,masterlogset,masterroute,timestamp,targetl
 	driveutils.addToLog( "-----------------overall-----------------------\n", summarylog )
 
 	for runname,runset in sumlist.iteritems():
-		for tname,nameset in sumlist[runname].iteritems():
+		for sourcename,nameset in sumlist[runname].iteritems():
 			strr=""
-			for tresult,val in sumlist[runname][tname].iteritems():
+			for tresult,val in sumlist[runname][sourcename].iteritems():
 				strr=strr+tresult+"="+str(val)+'  '
-			print ' - sum: ',runname,'-',tname,' : '+strr.rstrip()
-			driveutils.addToLog( ' - sum:  '+runname+' - '+tname+'  :  '+strr.rstrip()+"\n", summarylog )
+			print ' - sum: ',runname,'-',sourcename,' : '+strr.rstrip()
+			driveutils.addToLog( ' - sum:  '+runname+' - '+sourcename+'  :  '+strr.rstrip()+"\n", summarylog )
 
 	driveutils.addToLog( "-----------------\n", summarylog )
 	print '-----------------'
@@ -293,7 +292,7 @@ def prepStepListVals(steplist):
 				steplist[name]['cur_sha']=None
 
 def comparePathsInLogSet(matches,filelist):
-	for n,item in filelist.iteritems():
+	for sourcename,item in filelist.iteritems():
 		if 'cur_path' in item.keys():
 			curpath = item['cur_path']
 			print '@ ',n,item['pos'],curpath,item.keys()
@@ -301,7 +300,7 @@ def comparePathsInLogSet(matches,filelist):
 				if curpath not in matches.keys():
 					matches[curpath]=[]
 
-				matches[curpath].append(n)
+				matches[curpath].append(sourcename)
 	return matches
 
 def findLowestPath(matches):
@@ -350,6 +349,7 @@ def addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets):
 		if 'loadErr' in sourceobj.keys():
 			compSET['_sources'][sourcename]['loadErr'] = sourceobj['loadErr']
 
+		## IF the source has no cur_path (ie- it is missing?), add cur_path from its 'line'
 		if not 'cur_path' in sourceobj.keys():
 			reline = compSET['_sources'][sourcename]['line']
 			reline = re.findall("^\/(\/.*)\s*$",reline)
@@ -357,6 +357,7 @@ def addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets):
 				reline = reline[0]
 				if reline == lowest:
 					compSET['_sources'][sourcename]['cur_path'] = reline
+		## IF the source has no cur_sha (ie- it is missing), add cur_sha from its 'line' OR mark the load err if the sha was ***ed
 		if not 'cur_sha' in sourceobj.keys():
 			reline = compSET['_sources'][sourcename]['line']
 			reline = re.findall("^(.*?),",reline)
@@ -421,11 +422,11 @@ def checkCompSet(lowest,matches,compSET,steplist,logsetname,datasets):
 
 def summarizeCompSet(lowest,matches,compSET,steplist,logsetname,datasets):
 	shacheck={}
-	for setname,setobj in compSET['_sources'].iteritems():
+	for sourcename,setobj in compSET['_sources'].iteritems():
 		sha = setobj['cur_sha']
 		if sha not in shacheck.keys():
 			shacheck[sha]=[]
-		shacheck[sha].append(setname)
+		shacheck[sha].append(sourcename)
 
 	masterstate = compSET['_oldmaster']['state']
 	mastersha = None
@@ -435,27 +436,26 @@ def summarizeCompSet(lowest,matches,compSET,steplist,logsetname,datasets):
 	totalstates={}
 	groupstates={}
 	c=0
-	for setname,setobj in compSET['_sources'].iteritems():
+	for sourcename,setobj in compSET['_sources'].iteritems():
 		c=c+1
 		if setobj['state'] not in totalstates.keys():
 			totalstates[  setobj['state']  ]=0
-		else:
-			totalstates[  setobj['state']  ]+=1
+		totalstates[  setobj['state']  ]+=1
 		if setobj['state'] not in groupstates.keys():
 			groupstates[  setobj['state']  ]=[]
-		groupstates[  setobj['state']  ].append(setname)
+		groupstates[  setobj['state']  ].append(sourcename)
 	totalstates['_total']=c
 
 
-	grouptype = 'present'
+	overallstate = 'present'
 	if 'error' in totalstates.keys():
-		grouptype = 'error'
+		overallstate = 'error'
 	elif 'conflict' in totalstates.keys():
-		grouptype = 'conflict'
+		overallstate = 'conflict'
 	elif 'missing' in totalstates.keys():
-		grouptype = 'missing'
+		overallstate = 'missing'
 	elif 'new' in totalstates.keys():
-		grouptype = 'new'
+		overallstate = 'new'
 
 	compset = []
 	if masterstate != "missing":
@@ -506,7 +506,7 @@ def summarizeCompSet(lowest,matches,compSET,steplist,logsetname,datasets):
 	else:
 		sstate=sstate+"mS"
 
-	compSET['_summary']['overall']=grouptype
+	compSET['_summary']['overall']=overallstate
 	compSET['_summary']['pstate']=pstate
 	compSET['_summary']['sstate']=sstate
 	compSET['_summary']['masterstate']=masterstate
@@ -583,7 +583,7 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 	addToTotalCount(useopts['_holddata'],runname,logsetname,compSET)
 
 	overall=compSET['_summary']['overall']
-	logpath=masterlist['_newmaster']['altpath']+'/md5vali-'+overall+'-'+masterlist['_newmaster']['alttime']+'.txt'
+	logpath=masterlist['_newmaster']['newpath']+'/md5vali-'+overall+'-'+masterlist['_newmaster']['newtime']+'.txt'
 	driveutils.createNewLog(logpath,True)
 
 	driveutils.addToLog( "\n-------- md5 "+overall+" --------\n", logpath )
@@ -682,8 +682,10 @@ def stepCompareLogs(c,steplist,masterlist,runname,logsetname,datasets,useopts=No
 
 	loadStepList(masterlist)
 	prepStepListVals(masterlist)
+
+	# DEFUNCT?
 	pushMasterListToGroup(masterlist,logsetname)
-#		print
+
 
 	matches = {}
 	comparePathsInLogSet(matches,steplist)
@@ -776,22 +778,21 @@ def compareSourcesAndTargets(runname,masterlog,newmasterlog,logset,logsetname,ta
 
 	steplist={}
 #	i=0
-	for logname,logpath in logset.iteritems():
+	for sourcename,logpath in logset.iteritems():
 		logAf = open(logpath, 'rb')
-		steplist[logname]={}
-		steplist[logname]['obj']=logAf
-		steplist[logname]['pos']=0
-		steplist[logname]['logpath']=logpath
-		steplist[logname]['logname']=logname
-#		i=i+1
+		steplist[sourcename]={}
+		steplist[sourcename]['obj']=logAf
+		steplist[sourcename]['pos']=0
+		steplist[sourcename]['logpath']=logpath
+#		steplist[sourcename]['sourcename']=sourcename
 
 	masterlist={}
 
 	masterlist['_oldmaster']={}
 	logBf = open(masterlog, 'rb')
 	masterlist['_oldmaster']['obj']=logBf
-	masterlist['_oldmaster']['logpath']=masterlog
 	masterlist['_oldmaster']['pos']=0
+	masterlist['_oldmaster']['logpath']=masterlog
 
 	masterlist['_newmaster']={}
 	driveutils.createNewLog(newmasterlog+'.tmp',True)
@@ -799,8 +800,8 @@ def compareSourcesAndTargets(runname,masterlog,newmasterlog,logset,logsetname,ta
 	masterlist['_newmaster']['obj']=logBf
 	masterlist['_newmaster']['logpath']=newmasterlog
 
-	masterlist['_newmaster']['altpath']=re.findall('^(.*)\/',newmasterlog)[0]
-	masterlist['_newmaster']['alttime']=re.findall('^.*-(\d+-\d+)\/',newmasterlog)[0]
+	masterlist['_newmaster']['newpath']=re.findall('^(.*)\/',newmasterlog)[0]
+	masterlist['_newmaster']['newtime']=re.findall('^.*-(\d+-\d+)\/',newmasterlog)[0]
 
 
 	print
