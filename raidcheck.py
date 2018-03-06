@@ -91,11 +91,17 @@ targetList['raid_backup']['foldersets']['m_unsortedset']['target1']='/RAID_BACKU
 targetList['raid_backup']['foldersets']['m_unsortedset']['target3']='/RAID_BACKUP/Media/-unsorted'
 
 
+#do_only=['servscriptset','miscset','m_recordingset']
+#for k in targetList['raid_backup']['foldersets'].keys():
+#	if k not in do_only:
+#		del targetList['raid_backup']['foldersets'][k]
+
 
 
 runopts={}
 runopts['walkopts']={}
 runopts['compopts']={}
+runopts['walkopts']['numthreads']=2
 #runopts['walkopts']['printon']=10
 
 if "_askdropold" in arglist:
@@ -119,6 +125,10 @@ if "_testatlog" in arglist:
 	pt=arglist.index("_testatlog")+1
 	if pt < len(arglist):
 		runopts['walkopts']['usemd5log']={'logpath':arglist[pt],'setsource':'source'}
+if "_outputatlog" in arglist:
+	pt=arglist.index("_outputatlog")+1
+	if pt < len(arglist):
+		runopts['compopts']['useoutputlog']={'logpath':arglist[pt]}
 
 
 logfolder="/var/log/validates"

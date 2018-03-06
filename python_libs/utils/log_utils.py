@@ -1,8 +1,13 @@
 
-import os, sys, hashlib, time, re
+import io, os, sys, hashlib, time, re
+import csv
 import copy
 import subprocess
 from subprocess import *
+from Queue import Queue
+from threading import Thread
+
+
 
 filterlist={}
 filterlist['garbage']=["^\.[\~_].*","^\.DS_Store$","^\.localized$","^ICON$","^Icon$"]
@@ -143,6 +148,21 @@ def createNewLog(logname, reuse=False):
 		fo = open( path +"/"+ logname, 'wb' )
 		fo.close()
 
+
+
+def sortLogByPath(logpath):
+	writefile = open(logpath+'.tmp', 'w')
+	readfile = csv.reader(open(logpath), delimiter=",")
+	filteredRows = filter(lambda x: len(x) > 3, readfile)
+	for line in sorted(filteredRows, key=lambda line: line[3]):
+		strng=','.join(line)
+		writefile.write(strng+'\n')
+	writefile.close()
+
+	os.remove(logpath)
+	os.rename(logpath+".tmp",logpath)
+
+
 def decomposeFileLog(logstr, logtype):
 	if (logtype == 1):
 		Lparts = logstr.split(',',3)
@@ -162,6 +182,50 @@ def decomposeFileLog(logstr, logtype):
 			Lcompare['filetype'] = ''
 		Lcompare['fulltext'] = logstr
 		return Lcompare
+
+def makeMD5Fast( dirpath, targetlog, opts ):
+	def md5er(q,log,dir,filters=None):
+		while True:
+			fname=q.get()
+			if fname is None:
+				break
+			proc = subprocess.Popen(["/usr/bin/sigtool", "--md5", fname],stdout=subprocess.PIPE)
+			(out, err) = proc.communicate()
+			logfile = open(log, "a+", -1)
+			logfile.write(', '.join(out.split(':')[0:2])+', x, '+fname+"\n")
+			logfile.close()
+			proc.wait()
+			q.task_done()
+	num_threads=2
+	if 'numthreads' in opts.keys():
+		num_threads=opts['numthreads']
+
+	filequeue=Queue()
+	threads=[]
+
+	namefilters=None
+	if 'filters' in opts.keys():
+		namefilters=opts['filters']
+
+	for i in range(num_threads):
+		worker = Thread(target=md5er, args=(filequeue,targetlog,dirpath,namefilters))
+		worker.setDaemon(True)
+		threads.append(worker)
+		worker.start()
+
+	for folder,subs,files in os.walk(dirpath):
+		for filename in files:
+
+			fullpath=os.path.join(folder,filename)
+			folderpath=re.findall('^(.*\/)[^\/]+\s*$',fullpath)[0]
+			if (namefilters is None) or (not ignoreFile(filename,folderpath,fullpath,namefilters)):
+				filequeue.put(fullpath)
+	filequeue.join()
+
+	for i in range(num_threads):
+	    filequeue.put(None)
+	for t in threads:
+		t.join()
 
 
 def getFileInfo( path ):
@@ -232,7 +296,6 @@ def logThisFile( fullpath, name, logfile ):
 
 
 def addToLog( fulltext, log ):
-
 	fo = open( log, 'ab' )
 	fo.write( fulltext )
 	fo.close()

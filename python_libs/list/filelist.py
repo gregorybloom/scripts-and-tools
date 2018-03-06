@@ -53,9 +53,9 @@ def md5Walk(base,path,logname,walkopts=None):
 			filters=walkopts['filters']
 
 		if(driveutils.ignoreFile(namestr,path,pathTo,filters)):
-			filew = open("/logs/test/skipped.txt", "a")
-			filew.write(pathTo+"\n")
-			filew.close()
+#			filew = open("/logs/test/skipped.txt", "a")
+#			filew.write(pathTo+"\n")
+#			filew.close()
 			continue
 
 		if( not os.path.isdir(pathTo) ):
@@ -70,7 +70,7 @@ def md5Walk(base,path,logname,walkopts=None):
 				if 'printon' in walkopts.keys():
 					if (ix % walkopts['printon'])==0:
 						print walkopts['printon'],' logged '+pathTo
-				driveutils.logThisFile( base+"/"+path+'/', namestr, logname )
+				driveutils.logThisFile( base+path+'/', namestr, logname )
 				if 'printon' in walkopts.keys():
 					ix = ix+1
 #				else:

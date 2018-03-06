@@ -4,11 +4,14 @@ IFS=$'\n'
 SCRIPTPATH=`realpath "$0"`
 SCRIPTDIR=`dirname "$SCRIPTPATH"`
 
-OPTS=`getopt -o vh: --long verbose,force,help,email,precheck,vcheck,preponly,runtype: -n 'parse-options' -- "$@"`
+OPTS=`getopt -o vh: --long verbose,force,help,email,precheck,vcheck,preponly,verbose,runtype: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
 source "$SCRIPTDIR/config/autobackup_config.sh"
 source "$SCRIPTDIR/bash_libs/scrape_swaks.sh"
+source "$SCRIPTDIR/bash_libs/lock_and_tmp_files.sh"
+source "$SCRIPTDIR/bash_libs/handle_mounts.sh"
+source "$SCRIPTDIR/bash_libs/parse_output.sh"
 
 #####################################
 # Help function
@@ -22,55 +25,7 @@ EndHelp
   exit 0
 }
 ####################################
-checklocked() {
-  lockedrunname=$1
-  if [ -f "$BASELOGPATH/$lockedrunname.lock.txt" ]; then
-    if [ "$IGNORE_LOCKS" == true ]; then
-      rm -f "$BASELOGPATH/$lockedrunname.lock.txt"
-      false
-    else
-      true
-    fi
-  else
-    false
-  fi
-}
-getlocked() {
-  lockedrunname=$1
-  echo "$BASELOGPATH/$lockedrunname.lock.txt"
-}
-setlocked() {
-  lockedrunname=$1
-  setlocked=$2
-  time=$3
-  if [ "$setlocked" == true ]; then
-    if [ ! -d "$BASELOGPATH/" ]; then
-      mkdir -p "$BASELOGPATH/"
-    fi
-    if [ ! -f "$BASELOGPATH/$lockedrunname.lock.txt" ]; then
-      echo "$time" > "$BASELOGPATH/$lockedrunname.lock.txt"
-    fi
-  else
-    if [ -f "$BASELOGPATH/$lockedrunname.lock.txt" ]; then
-      rm -f "$BASELOGPATH/$lockedrunname.lock.txt"
-    fi
-  fi
-}
 
-rebuildtmpfiles() {
-  if [ ! -d "$RUNTMPPATH" ]; then
-   mkdir -p "$RUNTMPPATH"
- fi
- tmpfiles=("blkid.txt" "unmounted.txt" "cmount.txt" "mounted.txt" "dmount.txt" "copypaths.txt" "rsynclog.txt")
- for p in ${tmpfiles[@]}; do
-#   pname="${tmpfiles["$p"]}"
-  pname="$p"
-  if [ -f "$RUNTMPPATH/$pname" ]; then
-    rm -f "$RUNTMPPATH/$pname"
-  fi
-done
-}
-####################################
 hasfunct() {
   testfn="$1"
   if [ "$testfn" == "blockid" ]; then
@@ -96,35 +51,6 @@ else
 fi
 fi
 }
-loadblockids() {
-  for a in $(blkid); do
-    # Unable to start 'blkid': The specified file was not found.
-    SAVEDRIVE=false
-    if echo "$a" | grep -qP "^\/dev\/\w+\:\sLABEL=\"[\w\-\s]+\""; then
-      SAVEDRIVE=true
-    elif echo "$a" | grep -qP "^\/dev\/md\d+"; then
-      SAVEDRIVE=true
-    fi
-    if [ "$SAVEDRIVE" == true ]; then
-      uuid=$(echo "$a" | grep -oP "(?<=\sUUID=\")[\w\-]+(?=\")")
-      type=$(echo "$a" | grep -oP "(?<=\sTYPE=\")[\w\-]+(?=\")")
-      path=$(echo "$a" | grep -oP "^[^\:\s]+(?=\:)")
-      label=$(echo "$a" | grep -oP "(?<=\sLABEL=\")[^\"]+(?=\")")
-      echo "$uuid,$type,$path,$label" >> "$RUNTMPPATH/blkid.txt"
-    fi
-  done
-}
-loadmounts() {
-  filename="$1"
-  for b in $(mount); do
-    if echo "$b" | grep -qP "^(?:[A-Z]\:)?[\w\-\/]* on \/[^\s]+ type \w+ \([^\(\)]+\)$"; then
-     opath=$(echo "$b" | grep -oP "^(?:(?<=\w\:)|(?<=))[^\s]+(?= on )")
-     dpath=$(echo "$b" | grep -oP "(?<= on )\/[^\s]+(?= type)")
-     dtype=$(echo "$b" | grep -oP "(?<= type )\w+(?= \([^\(\)]+\)$)")
-     echo "$opath,$dpath,$dtype" >> "$RUNTMPPATH/$filename"
-   fi
- done
-}
 loadopts() {
   echo "$OPTS"
   eval set -- "$OPTS"
@@ -134,6 +60,7 @@ loadopts() {
   VALID_CHECK=false
   PREP_ONLY=false
   IGNORE_LOCKS=false
+  BACKUP_VERBOSE=false
 
   while true; do
    case "$1" in
@@ -145,6 +72,7 @@ loadopts() {
 --email )   USE_EMAIL=true; shift ;;
 --vcheck )  VALID_CHECK=true; shift ;;
 --preponly )  PREP_ONLY=true; shift ;;
+--verbose )  BACKUP_VERBOSE=true; shift ;;
 -- ) shift; break ;;
 * ) break ;;
 esac
@@ -168,97 +96,6 @@ loadrundata() {
   fi
 }
 #####################################
-findmounted() {
-  for i in $(cat "$RUNTMPPATH/blkid.txt"); do
-    IFS=',' read -ra vals <<< "$i"    #Convert string to array
-    uuid=${vals[0]}
-    type=${vals[1]}
-    path=${vals[2]}
-    label=${vals[3]}
-    MOUNT_FOUND=false
-    for j in $(cat "$RUNTMPPATH/cmount.txt"); do
-      IFS=',' read -ra vals2 <<< "$j"    #Convert string to array
-      opath=${vals2[0]}
-      dpath=${vals2[1]}
-      dtype=${vals2[2]}
-      if [[ "$opath" == "$path" ]]; then
-        echo "$opath,$dpath,$dtype" >> "$RUNTMPPATH/mounted.txt"
-        #        echo "mount,$opath,$dpath,$dtype"
-        MOUNT_FOUND=true
-        break
-      fi
-    done
-    if [ "$MOUNT_FOUND" == false ]; then
-     echo "$uuid,$type,$path,$label" >> "$RUNTMPPATH/unmounted.txt"
-     #      echo "nomount,$uuid,$type,$path,$label"
-   fi
- done
-}
-autounmount() {
-  for i in $(cat "$RUNTMPPATH/newmounted.txt"); do
-      IFS=',' read -ra vals2 <<< "$j"    #Convert string to array
-      thetype=${vals2[0]}
-      opath=${vals2[1]}
-      dpath=${vals2[2]}
-      umount -vl "$dpath"
-  done
-}
-automount() {
-  if [ ! -f "$RUNTMPPATH/newmounted.txt" ]; then
-    rm -f "$RUNTMPPATH/newmounted.txt"
-  fi
-  touch "$RUNTMPPATH/newmounted.txt"
-
-  mountnames=()
-  for i in $(ls -l "/media/"); do
-    if echo "$i" | grep -qP "d[\w\-\.]+\s*\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+(?:\d+\:)?\d+\s+\w+\s*$"; then
-      mname=$(echo "$i" | grep -oP "(?<=\s)\w+\s*$")
-      mountnames+=($mname)
-    fi
-  done
-  for j in $(cat "$RUNTMPPATH/unmounted.txt"); do
-    IFS=',' read -ra vals3 <<< "$j"    #Convert string to array
-    uuid=${vals3[0]}
-    type=${vals3[1]}
-    path=${vals3[2]}
-    label=${vals3[3]}
-    targetname=$(echo "$label" | tr '[:upper:]' '[:lower:]')
-    ############## ELIMINATE SPACES FROM $TARGETNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    if [ ! -d "/media/$targetname" ]; then
-      sudo mkdir -v "/media/$targetname"
-    fi
-
-    if [ "$type" == "ntfs" ]; then
-      #     echo "mount -t auto $path /media/$targetname"
-      touch "$RUNTMPPATH/newmounted.txt"
-
-      sudo mount -t "auto" "$path" "/media/$targetname"
-      echo "auto,$path,/media/$targetname" >> "$RUNTMPPATH/newmounted.txt"
-    fi
-  done
-}
-verifydriveflags() {
-  mv "$RUNTMPPATH/mounted.txt" "$RUNTMPPATH/mounted.tmp.txt"
-  touch "$RUNTMPPATH/mounted.txt"
-  for j in $(cat "$RUNTMPPATH/mounted.tmp.txt"); do
-    IFS=',' read -ra vals4 <<< "$j"    #Convert string to array
-    opath=${vals4[0]}
-    path=${vals4[1]}
-    type=${vals4[2]}
-    DRIVE_FLAG=false
-    for k in $(ls -l "$path"); do
-      if echo "$k" | grep -qP "^\-[\w\-\.+]+\s*\d+\s+[\w\+]+\s+[\w\+]+\s+\d+\s+\w+\s+\d+\s+(?:\d+\:)?\d+\s+_DRIVEFLAG_\w+_\.txt\s*$"; then
-        DRIVE_FLAG=$(echo "$k" | grep -oP "(?<=\s)_DRIVEFLAG_\w+_(?=\.txt\s*$)")
-        break
-      fi
-    done
-    if [ "$DRIVE_FLAG" == false ]; then
-      continue
-    fi
-    echo "$opath,$path,$type,$DRIVE_FLAG" >> "$RUNTMPPATH/mounted.txt"
-  done
-}
 findcopypaths() {
   touch "$RUNTMPPATH/copypaths.txt"
   for j in $(cat "$RUNTMPPATH/mounted.txt"); do
@@ -331,7 +168,7 @@ findcopypaths() {
                 echo "$runname,$copystep,$drivepath,$sourceflag,$sourcepath,$targetdrivepath,$targetflag,$targetpath"
 
                 if [ "$SOURCE_FOLDERPATH" == false ]; then
-		                SOURCE_FOLDERPATH="/$drivepath/"
+		                SOURCE_FOLDERPATH="$drivepath"
                 fi
 
               elif [ "$SOURCE_MATCHES_SELF" == true ]; then
@@ -364,129 +201,139 @@ findcopypaths() {
     #
   done
 }
-greprsynclines() {
-  pref="^\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+"
+scanrsync() {
+  testrun=$1
+  pathsfile="$2"                  # $RUNTMPPATH/copypaths.txt
+  tmperrfile="$3"                 # $RUNLOGPATH/prelog_errs-$LOGSUFFIX
+  tmplog="$4"                     # $RUNTMPPATH/rsynclog.txt
+  errdump="$ERRDUMP_FILEPATH"        # $ERRDUMP_FILEPATH
+  for j in $(cat "$pathsfile"); do
+    IFS=',' read -ra vals8 <<< "$j"    #Convert string to array
 
-  nopermission=("^rsync\:.*\: Permission denied \(\d+\)\s*$")
-  notpermitted=("^rsync\:.*\: Operation not permitted \(\d+\)\s*$")
-  reporting=()
-  reporting+=("^(?:sent|total)\s*(?:size is|\: matches=)?\s*\d+")
-  reporting+=("rsync error\:.*$")
-  drek=()
-}
-parsersync() {
-  parsefile="$1"
-  targetfile="$2"
-  for g in $(grep -P "^$prefregstr\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile"); do
-    nv=$(grep -nP "^$prefregstr\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile")
-    nval=$(echo "$nv" | grep -oP "^\d+(?=\:)")
-    nv2=$(grep -nP "^$prefregstr\s*Number of files\:\s*[\d\.\,]+\s*\(reg\:\s*[\d\.\,]+,\s*dir\:\s*[\d\.\,]+\)\s*$" "$parsefile")
-    nval2=$(echo "$nv2" | grep -oP "^\d+(?=\:)")
+    runname=${vals8[0]}
+    copystep=${vals8[1]}
+    drivepath=${vals8[2]}
+    sourceflag=${vals8[3]}
+    sourcepath=${vals8[4]}
+    targetdrivepath=${vals8[5]}
+    targetflag=${vals8[6]}
+    targetpath=${vals8[7]}
 
-    if [ -e "$parsefile.2" ]; then
-      rm -f "$parsefile.2"
+    mkdir -p "$targetdrivepath/$targetpath"
+    LOOP_ERROR_FAIL=false
+
+    if [ "$testrun" == true ]; then
+      errdumpltr="c"
+    else
+      errdumpltr="e"
     fi
-    tail "-n+$nval" "$parsefile"| head -n 1 >> "$parsefile.2"
-    tail "-n+$nval2" "$parsefile" >> "$parsefile.2"
 
-    for h in $(cat "$parsefile.2"); do
-      if echo "$h" | grep -qP "^\d+(?:\/\d+)+\s+\d+(?:\:\d+)+\s+\[\d+\]\s+(?:[Tt]otal|Number of|Literal data|Matched data|sent)"; then
-        tmpline=$(echo "$h" | sed -e 's/^[[:digit:]]*\/[[:digit:]]*\/[[:digit:]]*[[:space:]][[:digit:]]*\:[[:digit:]]*\:[[:digit:]]*[[:space:]]\[[[:digit:]]*\][[:space:]]//g')
-        echo "$tmpline" >> "$targetfile"
+    echo -e "\n--------- $sourcepath ----------\n" >> "$tmperrfile.tmp"
+    rm -f "$tmplog"
+    if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
+      touch "$tmplog"
+      echo -e "\n--------- $sourcepath ----------\n"
+      if [ "$BACKUP_VERBOSE" == false ]; then
+        if [ "$testrun" == false ]; then
+          if [ -d "$drivepath/$sourcepath" ]; then
+  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+           rsync -hrltzWPSD --no-links --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+          elif [ -f "$drivepath/$sourcepath" ]; then
+  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+           rsync -hrltzWPSD --no-links --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+          fi
+        else
+          if [ -d "$drivepath/$sourcepath" ]; then
+  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+           rsync -hrltzWPSD --no-links --dry-run --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+          elif [ -f "$drivepath/$sourcepath" ]; then
+  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+           rsync -hrltzWPSD --no-links --dry-run --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+          fi
+        fi
+      else
+        if [ "$testrun" == false ]; then
+          if [ -d "$drivepath/$sourcepath" ]; then
+  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+           rsync -hvvrltzWPSD --no-links --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+          elif [ -f "$drivepath/$sourcepath" ]; then
+  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+           rsync -hvvrltzWPSD --no-links --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+          fi
+        else
+          if [ -d "$drivepath/$sourcepath" ]; then
+  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+           rsync -hvvrltzWPSD --no-links --dry-run --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+          elif [ -f "$drivepath/$sourcepath" ]; then
+  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+           rsync -hvvrltzWPSD --no-links --dry-run --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+          fi
+        fi
       fi
-    done
-    rm -f "$parsefile.2"
+    elif [ ! -e "$drivepath/$sourcepath" ]; then
+      LOOP_ERROR_FAIL=true
+      PRE_ERROR_FAIL=true
+      ERROR_FAIL=true
+      echo -e "ERROR: PATH '$drivepath/$sourcepath' NOT FOUND for source drive '$sourceflag'\n" >> "$tmperrfile.tmp"
+      echo -e "--------------------------\n" >> "$tmperrfile.tmp"
+
+      echo "--$errdumpltr/1-- $sourcepath : $j" >> "$errdump"
+      echo "-- -- -- $drivepath/$sourcepath" >> "$errdump"
+    elif [ ! -e "$targetdrivepath/$targetpath" ]; then
+      LOOP_ERROR_FAIL=true
+      PRE_ERROR_FAIL=true
+      ERROR_FAIL=true
+      echo -e "ERROR: PATH '$targetdrivepath/$targetpath' NOT FOUND for target drive '$targetflag'\n" >> "$tmperrfile.tmp"
+      echo -e "--------------------------\n" >> "$tmperrfile.tmp"
+
+      echo "--$errdumpltr/2-- $sourcepath : $j" >> "$errdump"
+      echo "-- -- -- $targetdrivepath/$targetpath" >> "$errdump"
+    fi
+
+    if [ "$?" == "0" ]; then
+      echo "Successful rsync."
+    else
+      LOOP_ERROR_FAIL=true
+      PRE_ERROR_FAIL=true
+      ERROR_FAIL=true
+      errlabel=$(getrsyncerrcode "$?")
+      echo -e "------ $? : $errlabel : $sourcepath ------\n" >> "$tmperrfile.tmp"
+      ################################################ ERRORED HERE, e/3
+      echo "--$errdumpltr/3-- $j" >> "$errdump"
+      echo "-- -- -- $? : $errlabel : $sourcepath" >> "$errdump"
+    fi
+
+    parseresult=$(grepRSyncFailure "$prefregstr" "$tmplog" "$tmperrfile.tmp")
+    if echo "$parseresult" | grep -qP "fail_\d+"; then
+      LOOP_ERROR_FAIL=true
+      PRE_ERROR_FAIL=true
+      ERROR_FAIL=true
+
+      echo "--$errdumpltr/4-- $sourcepath : $j" >> "$errdump"
+      grepRSyncFailure "$prefregstr" "$tmplog" "$errdump"
+    fi
+    ############### DIFFERS AT THIS POINT
+
+    if [ "$testrun" == false ]; then
+      echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_deletes-$LOGSUFFIX"
+      echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_copies-$LOGSUFFIX"
+      echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_folders-$LOGSUFFIX"
+      echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_matches-$LOGSUFFIX"
+      grep -P "^$prefregstr\s*deleting\s+.*" "$tmplog" >> "$RUNLOGPATH/log_deletes-$LOGSUFFIX"
+      grep -P "^$prefregstr\s*>f\+{9,10}\s+\S.*[^\s\/]\s*$" "$tmplog" >> "$RUNLOGPATH/log_copies-$LOGSUFFIX"
+      grep -P "^$prefregstr\s*cd\+{9,10}\s+\S.*\/\s*$" "$tmplog" >> "$RUNLOGPATH/log_folders-$LOGSUFFIX"
+      grep -P "^$prefregstr\s*\S.*\s+is uptodate\s*$" "$tmplog" >> "$RUNLOGPATH/log_matches-$LOGSUFFIX"
+
+      echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+      parsersync "$tmplog" "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+    fi
+    ###############
+
+    if [ "$LOOP_ERROR_FAIL" == true ]; then
+      cat "$tmperrfile.tmp" >> "$tmperrfile"
+    fi
+    rm -f "$tmperrfile.tmp"
   done
-}
-
-readrsyncline() {
-  rline=$1
-  if echo "$rline" | grep -qP "^\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+"; then
-    prefstr=$(echo "$rline" | grep -oP "^\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+")
-    preflen=$((1+${#prefstr}))
-    rline=$(echo "$rline" | cut -c "$preflen-")
-  fi
-
-  if echo "$rline" | grep -qP "^rsync\:.*\: Permission denied \(\d+\)\s*$"; then
-    echo "nopermission"
-  elif echo "$rline" | grep -qP "^rsync\:.*\: Operation not permitted \(\d+\)\s*$"; then
-    echo "notpermitted"
-  elif echo "$rline" | grep -qP "^(?:sent|total)\s*(?:size is|\: matches=)?\s*\d+"; then
-    echo "reporting"
-  elif echo "$rline" | grep -qP "^rsync error\:.*$"; then
-    echo "reporting"
-  elif echo "$rline" | grep -qP "^delta-transmission disabled.*/s*$"; then
-    echo "drek"
-  elif echo "$rline" | grep -qP "^(?:generate_files|recv_files|send_files) (?:finished|phase=\d+)/s*$"; then
-    echo "drek"
-  elif echo "$rline" | grep -qP "^sending incremental file list/s*$"; then
-    echo "drek"
-  elif echo "$rline" | grep -qP "^deleting in \.\s*$"; then
-    echo "drek"
-  elif echo "$rline" | grep -qP "^delete_in_dir\(\.\)\s*$"; then
-    echo "drek"
-  elif echo "$rline" | grep -qP "^deleting\s+.*\/\s*$"; then
-    echo "drek"
-  elif echo "$rline" | grep -qP "^(?:recv_generator|recv_files|send_files|recv_file_name|delete_item)\(.*\)\s*(?:\w+=\d+\s*)*$"; then
-    echo "drek"
-  elif echo "$rline" | grep -qP "^(?:server_recv)\(.*\)\s*(?:\w*\s*\w+=\d+\s*)*$"; then
-    echo "drek"
-  elif echo "$rline" | grep -qP "^\[generator]\s+.*"; then
-    echo "drek"
-  elif echo "$rline" | grep -qP "^\[sender]\s+.*"; then
-    echo "drek"
-  elif echo "$rline" | grep -qP "^deleting\s+.*"; then
-    echo "deleted"
-  elif echo "$rline" | grep -qP "^\>f\+{9,10}\s+\S.*[^\s\/]\s*$"; then
-    echo "copied"
-  elif echo "$rline" | grep -qP "^cd\+{9,10}\s+\S.*[^\s\/]\s*$"; then
-    echo "folder"
-  else
-    echo "misc"
-  fi
-
-}
-getrsyncerrcode() {
-  num="$1"
-  if [ "$num" == 1 ]; then
-    echo "Syntax or usage error"
-  elif [ "$num" == 2 ]; then
-    echo "Protocol incompatibility"
-  elif [ "$num" == 3 ]; then
-    echo "Errors selecting input/output files, dirs"
-  elif [ "$num" == 4 ]; then
-    echo "Requested action not supported"
-  elif [ "$num" == 5 ]; then
-    echo "Error starting client-server protocol"
-  elif [ "$num" == 6 ]; then
-    echo "Daemon unable to append to log-file"
-  elif [ "$num" == 10 ]; then
-    echo "Error in socket I/O"
-  elif [ "$num" == 11 ]; then
-    echo "Error in file I/O"
-  elif [ "$num" == 12 ]; then
-    echo "Error in rsync protocol data stream"
-  elif [ "$num" == 13 ]; then
-    echo "Errors with program diagnostics"
-  elif [ "$num" == 14 ]; then
-    echo "Error in IPC code"
-  elif [ "$num" == 20 ]; then
-    echo "Received SIGUSR1 or SIGINT"
-  elif [ "$num" == 21 ]; then
-    echo "Some error returned by waitpid()"
-  elif [ "$num" == 22 ]; then
-    echo "Error allocating core memory buffers"
-  elif [ "$num" == 23 ]; then
-    echo "Partial transfer due to error"
-  elif [ "$num" == 24 ]; then
-    echo "Partial transfer due to vanished source files"
-  elif [ "$num" == 25 ]; then
-    echo "The --max-delete limit stopped deletions"
-  elif [ "$num" == 30 ]; then
-    echo "Timeout in data send/receive"
-  elif [ "$num" == 35 ]; then
-    echo "Timeout waiting for daemon connection"
-  fi
 }
 mailout() {
   type="$1"
@@ -554,8 +401,6 @@ mailout() {
 
 
 
-
-
 #####################################################################
 thedate="$(date +'%Y%m%d_T%H%M')"
 thedate1="$(date +'%Y/%m/%d  %H:%M')"
@@ -565,7 +410,6 @@ PRE_CHECK=false
 IGNORE_ERRS=false
 USE_EMAIL=false
 
-BASELOGPATH="${HOME}/log/backup"
 
 loadopts
 loadrundata
@@ -587,16 +431,17 @@ if ! hasfunct "swaks"; then
 fi
 echo "HAS_SWAKS  $HAS_SWAKS"
 #####################################################################
-if [ -e "/var/log/" ]; then
+BASELOGPATH="${HOME}/log/autobackup/$thedate"
+if [ -e "/tmp/" ]; then
   #  if [ "$HAS_BLOCKID" == true ]; then
-  BASELOGPATH="/var/log/backup"
+  BASELOGPATH="/tmp/autobackup/$thedate"
   #  fi
 fi
 #####################################################################
 
 
-if checklocked "$RUN_TYPE"; then
-  lockfile=$(getlocked "$RUN_TYPE")
+if checklocked "$IGNORE_LOCKS" "$BASELOGPATH" "$RUN_TYPE"; then
+  lockfile=$(getlocked "$BASELOGPATH" "$RUN_TYPE")
   locktime=$(cat "$lockfile")
   # send error mail with times of locked file, etc
   echo "LOCKED AT $locktime by $BASELOGPATH/$RUN_TYPE.lock.txt"
@@ -604,7 +449,7 @@ if checklocked "$RUN_TYPE"; then
   exit
 fi
 
-setlocked "$RUN_TYPE" true "$thedate"
+setlocked "$BASELOGPATH" "$RUN_TYPE" true "$thedate"
 
 
 RUNLOGPATH="$BASELOGPATH/log/$RUN_TYPE/$RUN_TYPE-$thedate"
@@ -614,37 +459,37 @@ mkdir -p "$RUNLOGPATH/"
 LOGSUFFIX="$RUN_TYPE-$thedate.txt"
 
 
-rebuildtmpfiles
+rebuildtmpfiles "$RUNTMPPATH"
 
 
 
 if [ "$HAS_BLOCKID" == true ]; then
   loadblockids
-  loadmounts "cmount.txt"
+  loadmounts "$RUNTMPPATH" "cmount.txt"
 
   touch  "$RUNTMPPATH/mounted.txt"
   touch  "$RUNTMPPATH/unmounted.txt"
 
-  findmounted
-  automount
+  findmounted "$RUNTMPPATH"
+  automount "$RUNTMPPATH"
 
   cat "$RUNTMPPATH/unmounted.txt" > "$RUNTMPPATH/oldunmounted.txt"
 
-  rebuildtmpfiles
+  rebuildtmpfiles "$RUNTMPPATH"
   loadblockids
 
-  loadmounts "cmount.txt"
+  loadmounts "$RUNTMPPATH" "cmount.txt"
 
-  touch  "$RUNTMPPATH/mounted.txt"
-  touch  "$RUNTMPPATH/unmounted.txt"
-  findmounted
+  touch "$RUNTMPPATH/mounted.txt"
+  touch "$RUNTMPPATH/unmounted.txt"
+  findmounted "$RUNTMPPATH"
 else
   loadmounts "mounted.txt"
 fi
 
 SOURCE_FOLDERPATH=false
 ERROR_FAIL=false
-verifydriveflags
+verifydriveflags "$RUNTMPPATH"
 findcopypaths
 
 
@@ -654,9 +499,10 @@ if [ "$ERROR_FAIL" == true ] || [ "$PRE_ERROR_FAIL" == true ]; then
   mailout "pre_error"
   exit 0
 fi
-ERRDUMP_FOLDERPATH="$SOURCE_FOLDERPATH/errdump/"
-mkdir -p "$ERRDUMP_FOLDERPATH"
+
+ERRDUMP_FOLDERPATH="/tmp/autobackup/errdump"
 ERRDUMP_FILEPATH="$ERRDUMP_FOLDERPATH/errdump-$thedate.txt"
+mkdir -p "$ERRDUMP_FOLDERPATH"
 echo "errdump: $ERRDUMP_FILEPATH"
 echo "logpath: $RUNLOGPATH"
 
@@ -664,7 +510,7 @@ prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
 if [ "$VALID_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
 
-  pyrun=$(python $SCRIPTDIR/raidcheck.py | tail)
+  pyrun=$(python $SCRIPTDIR/raidcheck.py | tail -n 10)
   echo "..$pyrun"
 
   vlogpath=false
@@ -691,26 +537,19 @@ if [ "$VALID_CHECK" == true ]; then
       touch "$tmpfile.2"
       rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile.2" "$vbaselog" "$targetdrivepath/logs/"
 
-
-      if grep -qP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile.2"; then
+      parseresult=$(grepRSyncFailure "$prefregstr" "$tmpfile.2" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX")
+      if echo "$parseresult" | grep -qP "fail_\d+"; then
         PRE_ERROR_FAIL=true
         ERROR_FAIL=true
-        grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile.2" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
-
-        echo "--a/1-- $vbaselog,$p" >> "$ERRDUMP_FILEPATH"
-        grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile.2" >> "$ERRDUMP_FILEPATH"
+        if echo "$parseresult" | grep -qP "fail_1"; then
+          echo "--a/1-- $vbaselog,$p" >> "$ERRDUMP_FILEPATH"
+        fi
+        if echo "$parseresult" | grep -qP "fail_2"; then
+          echo "--a/2-- $vbaselog,$p" >> "$ERRDUMP_FILEPATH"
+        fi
+        grepRSyncFailure "$prefregstr" "$tmpfile.2" "$ERRDUMP_FILEPATH"
       fi
-      if grep -qP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile.2"; then
-        PRE_ERROR_FAIL=true
-        ERROR_FAIL=true
-        grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile.2" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
-
-        echo "--a/2-- $vbaselog,$p" >> "$ERRDUMP_FILEPATH"
-        grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile.2" >> "$ERRDUMP_FILEPATH"
-      fi
-      if [ -f "$tmpfile.2" ]; then
-        rm -f "$tmpfile.2"
-      fi
+      rm -f "$tmpfile.2"
     done
   fi
 
@@ -720,7 +559,7 @@ if [ "$VALID_CHECK" == true ]; then
     vsummary="$vpath""md5vali-summary-$vdate.txt"
 
     for m in $(cat "$vsummary"); do
-      if echo "$m" | grep -qP "(?:missing|conflicts)?\s*\:\s*\d+"; then
+      if echo "$m" | grep -qP "(?:missing|conflicts)\s*\:\s*\d+"; then
         PRE_ERROR_FAIL=true
         ERROR_FAIL=true
         touch "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
@@ -752,89 +591,9 @@ fi
 
 if [ "$PRE_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
-  for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
-    IFS=',' read -ra vals8 <<< "$j"    #Convert string to array
+  scanrsync true "$RUNTMPPATH/copypaths.txt" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX" "$RUNTMPPATH/rsynclog.txt"
+  rm -f "$RUNTMPPATH/rsynclog.txt"
 
-    runname=${vals8[0]}
-    copystep=${vals8[1]}
-    drivepath=${vals8[2]}
-    sourceflag=${vals8[3]}
-    sourcepath=${vals8[4]}
-    targetdrivepath=${vals8[5]}
-    targetflag=${vals8[6]}
-    targetpath=${vals8[7]}
-
-    mkdir -p "$targetdrivepath/$targetpath"
-    LOOP_ERROR_FAIL=false
-
-    echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp"
-    if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
-      if [ -d "$drivepath/$sourcepath" ]; then
-        echo "rsync dryrun deleteafter $drivepath/$sourcepath $targetdrivepath/$targetpath"
-        touch "$RUNTMPPATH/rsynclog.txt"
-       rsync -hrltzWPSD --no-links --dry-run --delete --delete-after --no-compress --log-file="$RUNTMPPATH/rsynclog.txt" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-      elif [ -f "$drivepath/$sourcepath" ]; then
-        echo "rsync dryrun $drivepath/$sourcepath $targetdrivepath/$targetpath"
-        touch "$RUNTMPPATH/rsynclog.txt"
-       rsync -hrltzWPSD --no-links --dry-run --no-compress --log-file="$RUNTMPPATH/rsynclog.txt" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-      fi
-    elif [ ! -e "$drivepath/$sourcepath" ]; then
-      LOOP_ERROR_FAIL=true
-      PRE_ERROR_FAIL=true
-      ERROR_FAIL=true
-      echo -e "ERROR: PATH '$drivepath/$sourcepath' NOT FOUND for source drive '$sourceflag'\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-      echo -e "--------------------------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-
-      echo "--c/1-- $j" >> "$ERRDUMP_FILEPATH"
-      echo "-- -- -- $drivepath/$sourcepath" >> "$ERRDUMP_FILEPATH"
-    elif [ ! -e "$targetdrivepath/$targetpath" ]; then
-      LOOP_ERROR_FAIL=true
-      PRE_ERROR_FAIL=true
-      ERROR_FAIL=true
-      echo -e "ERROR: PATH '$targetdrivepath/$targetpath' NOT FOUND for target drive '$targetflag'\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-      echo -e "--------------------------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-
-      echo "--c/2-- $j" >> "$ERRDUMP_FILEPATH"
-      echo "-- -- -- $targetdrivepath/$targetpath" >> "$ERRDUMP_FILEPATH"
-    fi
-
-    if [ ! "$?" == "0" ]; then
-      LOOP_ERROR_FAIL=true
-      PRE_ERROR_FAIL=true
-      ERROR_FAIL=true
-      errlabel=$(getrsyncerrcode "$?")
-      echo -e "------ $? : $errlabel ------\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp"
-
-      echo "--c/3-- $j" >> "$ERRDUMP_FILEPATH"
-      echo "-- -- -- $? : $errlabel" >> "$ERRDUMP_FILEPATH"
-    fi
-
-    if grep -qP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt"; then
-      LOOP_ERROR_FAIL=true
-      PRE_ERROR_FAIL=true
-      ERROR_FAIL=true
-      grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp"
-
-      echo "--c/4-- $j" >> "$ERRDUMP_FILEPATH"
-      grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt" >> "$ERRDUMP_FILEPATH"
-    fi
-    if grep -qP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt"; then
-      LOOP_ERROR_FAIL=true
-      PRE_ERROR_FAIL=true
-      ERROR_FAIL=true
-      grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp"
-
-      echo "--c/5-- $j" >> "$ERRDUMP_FILEPATH"
-      grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$RUNTMPPATH/rsynclog.txt" >> "$ERRDUMP_FILEPATH"
-    fi
-
-    rm -f "$RUNTMPPATH/rsynclog.txt"
-
-    if [ "$LOOP_ERROR_FAIL" == true ]; then
-      cat "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
-    fi
-    rm -f "$RUNLOGPATH/prelog_errs-$LOGSUFFIX.tmp"
-  done
   if [ "$PRE_ERROR_FAIL" == true ]; then
     thedate2="$(date +'%Y/%m/%d  %H:%M')"
     mailout "pre_error"
@@ -860,119 +619,24 @@ fi
 
 
 ERROR_FAIL=false
-for j in $(cat "$RUNTMPPATH/copypaths.txt"); do
-  IFS=',' read -ra vals8 <<< "$j"    #Convert string to array
+PRE_ERROR_FAIL=false
+scanrsync false "$RUNTMPPATH/copypaths.txt" "$RUNLOGPATH/log_errs-$LOGSUFFIX" "$RUNLOGPATH/log_full-$LOGSUFFIX"
+rm -f "$RUNLOGPATH/log_full-$LOGSUFFIX.tmp"
 
-  runname=${vals8[0]}
-  copystep=${vals8[1]}
-  drivepath=${vals8[2]}
-  sourceflag=${vals8[3]}
-  sourcepath=${vals8[4]}
-  targetdrivepath=${vals8[5]}
-  targetflag=${vals8[6]}
-  targetpath=${vals8[7]}
-
-  mkdir -p "$targetdrivepath/$targetpath"
-  LOOP_ERROR_FAIL=false
-
-  tmpfile="$RUNLOGPATH/log_full-$LOGSUFFIX.tmp"
-  rm -f "$tmpfile"
-
-
-  echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-  if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
-    if [ -d "$drivepath/$sourcepath" ]; then
-      echo "rsync deleteafter $drivepath/$sourcepath $targetdrivepath/$targetpath"
-      touch "$tmpfile"
-      rsync -hrltvvzWPSD --no-links --delete --delete-after --stats --no-compress --log-file="$tmpfile" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-    elif [ -f "$drivepath/$sourcepath" ]; then
-      echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-      touch "$tmpfile"
-      rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-    fi
-  elif [ ! -e "$drivepath/$sourcepath" ]; then
-    ERROR_FAIL=true
-    LOOP_ERROR_FAIL=true
-    echo -e "ERROR: PATH '$drivepath/$sourcepath' NOT FOUND for source drive '$sourceflag'\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-    echo -e "--------------------------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-
-    echo "--d/1-- $j" >> "$ERRDUMP_FILEPATH"
-    echo -e "ERROR: PATH '$drivepath/$sourcepath' NOT FOUND for source drive '$sourceflag'\n" >> "$ERRDUMP_FILEPATH"
-  elif [ ! -e "$targetdrivepath/$targetpath" ]; then
-    ERROR_FAIL=true
-    LOOP_ERROR_FAIL=true
-    echo -e "ERROR: PATH '$targetdrivepath/$targetpath' NOT FOUND for target drive '$targetflag'\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-    echo -e "--------------------------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-
-    echo "--d/2-- $j" >> "$ERRDUMP_FILEPATH"
-    echo -e "ERROR: PATH '$targetdrivepath/$targetpath' NOT FOUND for source drive '$targetflag'\n" >> "$ERRDUMP_FILEPATH"
-  fi
-
-
-  if [ "$?" -eq "0" ]; then
-    echo "Successful rsync."
-  else
-    ERROR_FAIL=true
-    LOOP_ERROR_FAIL=true
-    errlabel=$(getrsyncerrcode "$?")
-    echo -e "------ $? : $errlabel ------\n" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-
-    echo "--e/1-- $j" >> "$ERRDUMP_FILEPATH"
-    echo -e "------ $? : $errlabel ------\n" >> "$ERRDUMP_FILEPATH"
-  fi
-  if grep -qP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile"; then
-    ERROR_FAIL=true
-    LOOP_ERROR_FAIL=true
-    grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-
-    echo "--e/2-- $j" >> "$ERRDUMP_FILEPATH"
-    grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$tmpfile" >> "$ERRDUMP_FILEPATH"
-  fi
-  if grep -qP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile"; then
-    ERROR_FAIL=true
-    LOOP_ERROR_FAIL=true
-    grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-
-    echo "--e/3-- $j" >> "$ERRDUMP_FILEPATH"
-    grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$tmpfile" >> "$ERRDUMP_FILEPATH"
-  fi
-
-
-  echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_deletes-$LOGSUFFIX"
-  echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_copies-$LOGSUFFIX"
-  echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_folders-$LOGSUFFIX"
-  echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_matches-$LOGSUFFIX"
-  grep -P "^$prefregstr\s*deleting\s+.*" "$tmpfile" >> "$RUNLOGPATH/log_deletes-$LOGSUFFIX"
-  grep -P "^$prefregstr\s*>f\+{9,10}\s+\S.*[^\s\/]\s*$" "$tmpfile" >> "$RUNLOGPATH/log_copies-$LOGSUFFIX"
-  grep -P "^$prefregstr\s*cd\+{9,10}\s+\S.*\/\s*$" "$tmpfile" >> "$RUNLOGPATH/log_folders-$LOGSUFFIX"
-  grep -P "^$prefregstr\s*\S.*\s+is uptodate\s*$" "$tmpfile" >> "$RUNLOGPATH/log_matches-$LOGSUFFIX"
-
-
-  ##################################### improve
-  echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
-  parsersync "$tmpfile" "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
-  #####################################
-
-  if [ "$LOOP_ERROR_FAIL" == true ]; then
-    cat "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp" >> "$RUNLOGPATH/log_errs-$LOGSUFFIX"
-  fi
-  rm -f "$RUNLOGPATH/log_errs-$LOGSUFFIX.tmp"
-
-  #  cat "$RUNLOGPATH/log_full-$LOGSUFFIX.tmp" >> "$RUNLOGPATH/log_full-$LOGSUFFIX"
-  rm -f "$RUNLOGPATH/log_full-$LOGSUFFIX.tmp"
-done
 thedate2="$(date +'%Y/%m/%d  %H:%M')"
 if [ "$ERROR_FAIL" == true ]; then
   mailout "error"
 else
   mailout "summary"
 fi
+rm -f "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
 
 #####################################################################
 
-##autounmount
+##autounmount "$RUNTMPPATH"
 
-setlocked "$RUN_TYPE" false "$thedate"
+
+setlocked "$BASELOGPATH" "$RUN_TYPE" false "$thedate"
 
 echo
 echo "BACKUP RAN SUCCESSFULLY"
@@ -989,3 +653,9 @@ exit 0
 #     run validator tuesday nights?
 #     backup thurs nights IIF:    no conflicts, or at least "okayed" conflicts
 #     validator pre-run as check?
+
+#  LC_ALL=C find SIDE_DRIVES/-MAC\ BACKUP/Users/greg/MyStuff/_Transfer/_/sortpicture/dragons_crown/ -name '*[! -~]*'
+#  IFS=$'\n'; for i in $(LC_ALL=C find SIDE_DRIVES/-MAC\ BACKUP/Users/greg/MyStuff/_Transfer/_/sortpicture/dragons_crown/ -name '*[! -~]*'); do f="$i"; mv "$i" ${f//[^A-Za-z0-9. \/\(\)_-]/_}; echo "$i"; done
+
+#  https://serverfault.com/questions/348482/how-to-remove-invalid-characters-from-filenames
+#  https://unix.stackexchange.com/questions/109747/identify-files-with-non-ascii-or-non-printable-characters-in-file-name

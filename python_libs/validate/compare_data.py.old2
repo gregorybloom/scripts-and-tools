@@ -2,7 +2,249 @@
 from maintenance_loader import *
 
 import os, sys, hashlib, time, shutil, re
+import csv
 from sys import version_info
+
+
+
+def sortLogByPath(logpath):
+	writefile = open(logpath+'.tmp', 'w')
+	readfile = csv.reader(open(logpath), delimiter=",")
+	filteredRows = filter(lambda x: len(x) > 3, readfile)
+	for line in sorted(filteredRows, key=lambda line: line[3]):
+		strng=','.join(line)
+		writefile.write(strng+'\n')
+	writefile.close()
+
+	os.remove(logpath)
+	os.rename(logpath+".tmp",logpath)
+
+
+def logMissedFolders(datasets,summarylog,useopts):
+
+	if '_holddata' in useopts.keys():
+		if 'dropold' in useopts['_holddata'].keys():
+			print '----------- master files dropped -----------'
+			driveutils.addToLog( "----------- master files dropped -----------\n", summarylog )
+			for obj in useopts['_holddata']['dropold']:
+				reline = obj['line']
+#				reline = re.findall("^(?:[^,]+,){3}.*?(\/.*\/\/.*)$",reline)[0]
+
+				print obj['runname'], ',', obj['logsetname'], ',', reline
+				driveutils.addToLog( obj['runname']+','+obj['logsetname']+','+reline+"\n", summarylog )
+			print '----------------------------------------------'
+			driveutils.addToLog( "----------------------------------------------\n", summarylog )
+
+	errfolderc=0
+	if 'errset' in datasets.keys():
+		if 'folderload' in datasets['errset'].keys():
+			print '--------- errs: folder loads failed ---------'
+			driveutils.addToLog( "--------- errs: folder loads failed ---------\n\n", summarylog )
+			for logsetname,setobj in datasets['errset']['folderload'].iteritems():
+				for sourcename,folderlist in datasets['errset']['folderload'].iteritems():
+					for folderpath in folderlist:
+						print logsetname,',', sourcename,' -  ',folderpath
+						driveutils.addToLog( logsetname+', '+sourcename+' -  '+folderpath+"\n", summarylog )
+						errfolderc+=1
+			print '----------------------------------------------'
+			driveutils.addToLog( "----------------------------------------------\n", summarylog )
+
+	print
+	if '_holddata' in useopts.keys():
+		if 'dropold' in useopts['_holddata'].keys():
+			print 'dropped: ',len(useopts['_holddata']['dropold'])," files from the master list"
+			driveutils.addToLog( '\ndropped: '+str(len(useopts['_holddata']['dropold']))+" files from the master list\n", summarylog )
+	if errfolderc>0:
+			print 'errored on loading ',errfolderc," folders"
+			driveutils.addToLog( '\nerrored on loading '+str(errfolderc)+" folders\n", summarylog )
+	print '----------------------------------------------'
+	driveutils.addToLog( "----------------------------------------------\n", summarylog )
+
+
+#def actOnUseOpts(stage,useopts,masterlist,logsetname,etcdata=None):
+def actOnUseOpts(stage,useopts,steplist,masterlist,runname,logsetname,compSET):
+	py3 = version_info[0] > 2 #creates boolean value for test that Python major version > 2
+
+	##  If the stage is 'add', set aside any missing values from "master" into 'dropold' or 'askold' in '_holddata'
+	if stage == "add":
+		if 'dropold' in useopts.keys():
+			if compSET['_summary']['masterstate'] != "missing":
+				statelist=compSET['_summary']['groupstates'].keys()
+				if len(statelist)==1 and "missing" in statelist:
+
+					if 'dropold' not in useopts['_holddata'].keys():
+						useopts['_holddata']['dropold']=[]
+					useopts['_holddata']['dropold'].append({'line':compSET['_summary']['masterline'],'runname':runname,'logsetname':logsetname})
+					return 'exit'
+		elif 'askdropold' in useopts.keys():
+			if compSET['_summary']['masterstate'] != "missing":
+				statelist=compSET['_summary']['groupstates'].keys()
+				if len(statelist)==1 and "missing" in statelist:
+					if '_holddata' not in useopts.keys():
+						useopts['_holddata']={}
+					if 'askold' not in useopts['_holddata'].keys():
+						useopts['_holddata']['askold']=[]
+					useopts['_holddata']['askold'].append({'line':compSET['_summary']['masterline'],'runname':runname,'logsetname':logsetname})#,'set':compSET['_summary']})
+					return 'exit'
+
+	if stage == 'end':
+		if 'askdropold' in useopts.keys():
+			if '_holddata' in useopts.keys():
+				if 'askold' in useopts['_holddata'].keys():
+					heldlist=[]
+					for obj in useopts['_holddata']['askold']:
+						if obj['runname']==runname and obj['logsetname']==logsetname:
+							heldlist.append(obj)
+
+					if len(heldlist)==0:
+						return
+					print
+					print
+					for obj in heldlist:
+						reline = obj['line']
+						reline = re.findall("^(?:[^,]+,){3}.*?\/\/(.*)$",reline)[0]
+						print obj['runname'], ' ', obj['logsetname'], ' ', reline
+					print
+					print "These files were not found."
+					print "Do you wish to remove these missing files from the master list?"
+					if py3:
+						conf = input()
+					else:
+						conf = raw_input()
+					print
+					if re.match("^\s*([Yy](?:[Ee][Ss])?)\s*$",conf):
+						print "Removed."
+						if 'dropold' not in useopts['_holddata'].keys():
+							useopts['_holddata']['dropold']=[]
+						useopts['_holddata']['dropold'].extend(heldlist)
+
+					else:
+						newlog=masterlist['_newmaster']
+						for obj in heldlist:
+#							fullpath = re.findall(r'(\/\/.*)$',obj['line'])[0]
+#							startline = re.findall(r'^(\w+,\s*\d+,[^,]+,\s*)\/',obj['line'])[0]
+#							masterline = startline+"/masterpath/"+logsetname+fullpath+"\n"
+
+							newlog['obj'].write(obj['line']+"\n")
+						print "Canceling removal."
+
+
+
+##################################################
+
+def beginCompareStage(logsetlist,runname,masterlogset,masterroute,timestamp,targetlist,datasets,useopts=None):
+
+	if useopts is None:
+		useopts={}
+	useopts['_holddata']={}
+
+	debuglog = masterroute+'master-'+timestamp+'/' + 'md5vali-debug-'+datasets['timestr']+'.txt'
+
+
+	newmasterlog=masterroute+'master-'+timestamp+'/'
+	newmasterlog+='md5vali-master-'+timestamp+'.txt'
+
+	if 'useoutputlog' in useopts.keys():
+		newmasterlog=useopts['useoutputlog']['logpath']
+
+
+
+
+	##  Grab List of SetNames from datasets['logset'][runname]
+	loglistkeys = logsetlist.keys()
+	loglistkeys.sort()
+	for logsetname in loglistkeys:
+		if logsetname == "_oldmaster" or logsetname == "newmaster":
+			print "**** ERROR!! ****"
+			print "Do not name any filesets '_oldmaster' or '_newmaster'"
+			raise
+			return
+
+		if logsetname in masterlogset.keys():
+			masterlog = masterlogset[logsetname]['path']
+			compareSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logsetlist[logsetname],logsetname,targetlist,datasets,useopts)
+
+
+	summarylog = masterroute+'md5vali-summary-'+timestamp+'.txt'
+	driveutils.createNewLog(summarylog,True)
+
+	print '----------------------------------------------'
+	print
+	driveutils.addToLog( "----------------------------------------------\n\n", summarylog )
+	logMissedFolders(datasets,summarylog,useopts)
+
+	os.rename(newmasterlog+".tmp",newmasterlog)
+	sortLogByPath(newmasterlog)
+
+	sumlist={}
+############################### BROKE AT HERE #######################################
+	for runname,runset in useopts['_holddata']['totals'].iteritems():
+		if runname not in sumlist.keys():
+			sumlist[runname]={}
+		for logsetname,logset in useopts['_holddata']['totals'][runname].iteritems():
+			for sourcename,nameset in useopts['_holddata']['totals'][runname][logsetname].iteritems():
+				if sourcename not in sumlist[runname].keys():
+					sumlist[runname][sourcename]={}
+				for tresult,val in nameset.iteritems():
+					if tresult not in sumlist[runname][sourcename].keys():
+						sumlist[runname][sourcename][tresult]=0
+					sumlist[runname][sourcename][tresult]+=val
+
+	print
+	print '----------------------------------------------'
+	print '-----------------totals-----------------------'
+	driveutils.addToLog( "\n----------------------------------------------\n", summarylog )
+	driveutils.addToLog( "-----------------totals-----------------------\n", summarylog )
+
+	for runname,runset in useopts['_holddata']['totals'].iteritems():
+		for logsetname,logset in useopts['_holddata']['totals'][runname].iteritems():
+			for sourcename,nameset in useopts['_holddata']['totals'][runname][logsetname].iteritems():
+				strr=""
+				for tresult,val in nameset.iteritems():
+					strr=strr+tresult+"="+str(val)+'  '
+				print ' - totals: ',runname,'-',logsetname,'-',sourcename,' : '+strr.rstrip()
+				driveutils.addToLog( ' - totals:  '+runname+' - '+logsetname+' - '+sourcename+'  :  '+strr.rstrip()+"\n", summarylog )
+#			useopts['_holddata']['totals'][runname][logsetname][tname][tresult]+=1
+	print '----------------------------------------------'
+	print '-----------------overall-----------------------'
+	driveutils.addToLog( "----------------------------------------------\n", summarylog )
+	driveutils.addToLog( "-----------------overall-----------------------\n", summarylog )
+
+	for runname,runset in sumlist.iteritems():
+		for sourcename,nameset in sumlist[runname].iteritems():
+			strr=""
+			for tresult,val in sumlist[runname][sourcename].iteritems():
+				strr=strr+tresult+"="+str(val)+'  '
+			print ' - sum: ',runname,'-',sourcename,' : '+strr.rstrip()
+			driveutils.addToLog( ' - sum:  '+runname+' - '+sourcename+'  :  '+strr.rstrip()+"\n", summarylog )
+
+	driveutils.addToLog( "-----------------\n", summarylog )
+	print '-----------------'
+
+	strr=""
+	for tresult,val in useopts['_holddata']['overalltotals'].iteritems():
+		strr=strr+tresult+': '+str(val)+',   '
+	print ' - sets:   ',(strr.rstrip())[0:-1]
+	strr=(strr.rstrip())[0:-1]
+	driveutils.addToLog( ' - sets:    '+strr+"\n", summarylog )
+	print '\n - logged in:  ',newmasterlog
+#			useopts['_holddata']['overalltotals'][grouptype]=0
+	useopts['_holddata']['overalltotals']={}
+
+
+	if 'errset' in datasets.keys():
+		print
+		print '----------------------------------------------'
+		driveutils.addToLog( '\n----------------------------------------------\n', summarylog )
+		for typename,typelist in datasets['errset'].iteritems():
+			print '------------------',typename,'-----------------------'
+			driveutils.addToLog( '------------------'+typename+'-----------------------\n', summarylog )
+			for item in typelist:
+				print item
+				driveutils.addToLog( item+'\n', summarylog )
+		print '----------------------------------------------'
+		driveutils.addToLog( '----------------------------------------------\n\n', summarylog )
+		print
 
 
 def loadStepList(steplist):
@@ -84,7 +326,6 @@ def buildCompSet(lowest,matches,compSET,masterlist):
 	compSET['_oldmaster']['state'] = 'missing'
 	compSET['_oldmaster']['cur_path'] = lowest
 
-#	print "&&&&",masterlist["_oldmaster"].keys(),lowest,'==',masterlist["_oldmaster"]
 	if 'cur_path' in masterlist["_oldmaster"].keys():
 		if lowest == masterlist["_oldmaster"]["cur_path"]:
 			compSET['_oldmaster']['state'] = 'present'
@@ -304,7 +545,8 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 ##		print
 ##		print compset
 
-	masterfilepath = "/masterpath/"+logsetname+'/'+compSET['_summary']['path']
+#	masterfilepath = "/masterpath/"+logsetname+"/"+compSET['_summary']['path']
+	masterfilepath = "/masterpath/"+logsetname+compSET['_summary']['path']
 	masterfiledata = None
 	masterline = None
 	if compSET['_summary']['masterstate'] != 'missing':
@@ -333,7 +575,8 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 		masterline = masterfiledata+masterfilepath+"\n"
 		compSET['_summary']['masterline']=masterline.rstrip()
 
-	val = dropmissed.actOnUseOpts('add',useopts,steplist,masterlist,runname,logsetname,compSET)
+#		val = actOnUseOpts('add',useopts,masterlist,logsetname,{'logitem':logitem,'compset':compset})
+	val = actOnUseOpts('add',useopts,steplist,masterlist,runname,logsetname,compSET)
 	if val == 'exit':
 		return
 
@@ -582,9 +825,10 @@ def compareSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logset,log
 		c=col['count']
 		opath=col['lowest']
 
-	dropmissed.actOnUseOpts('end',useopts,steplist,masterlist,runname,logsetname,{})
+	actOnUseOpts('end',useopts,steplist,masterlist,runname,logsetname,{})
 
 	closeUpFiles(steplist)
 	closeUpFiles(masterlist)
 #	return
 #	os.rename(newmasterlog+".tmp",newmasterlog)
+	sortLogByPath(newmasterlog+".tmp")

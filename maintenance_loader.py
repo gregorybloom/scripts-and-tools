@@ -26,6 +26,7 @@ splitlogs = imp.load_source('splitlogs', SCRIPTPATH+'/python_libs/logsplit/split
 comparesplit = imp.load_source('comparesplit', SCRIPTPATH+'/python_libs/logsplit/comparesplit.py')
 finddupesplit = imp.load_source('finddupesplit', SCRIPTPATH+'/python_libs/logsplit/finddupesplit.py')
 
+dropmissed = imp.load_source('dropmissed', SCRIPTPATH+'/python_libs/validate/drop_missed.py')
 comparedata = imp.load_source('comparedata', SCRIPTPATH+'/python_libs/validate/compare_data.py')
 checkmd5s = imp.load_source('checkmd5s', SCRIPTPATH+'/python_libs/validate/check_md5logs.py')
 
