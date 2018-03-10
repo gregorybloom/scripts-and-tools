@@ -113,7 +113,7 @@ def getBestMaster(masterpath,useopts):
 		bestmaster = buildMasterName(bestfit1,bestfit2)
 		return bestmaster
 
-def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,md5opts=None):
+def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,timeset,md5opts=None):
 	if md5opts is None:
 		md5opts={}
 	if 'walkopts' not in md5opts.keys():
@@ -129,17 +129,20 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,m
 	logpath = logfolder+'/md5vali/'+runname+'/';
 	tmppath = tmpfolder+'/md5vali/'+runname+'/'+timestr+'/';
 
-	if 'usemd5log' in md5opts['walkopts'].keys():
+	timeset['_md5sets'] ={}
 
-		uselog=md5opts['walkopts']['usemd5log']['logpath']
+	if 'usenew_md5log' in md5opts['walkopts'].keys():
+
+		uselog=md5opts['walkopts']['usenew_md5log']['logpath']
 		if os.path.exists(uselog) and os.path.isfile(uselog):
 			print "Using ",uselog
+			driveutils.sortLogByPath(uselog)
 
 			if 'foldersets' in infosets.keys():
 				for setname,folderset in infosets['foldersets'].iteritems():
 					for sourcename,folderpath in folderset.iteritems():
 
-						if sourcename != md5opts['walkopts']['usemd5log']['setsource']:
+						if sourcename != md5opts['walkopts']['usenew_md5log']['setsource']:
 							continue
 						if sourcename not in foundlist.keys():
 							continue
@@ -189,6 +192,7 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,m
 						f.close()
 
 
+						driveutils.sortLogByPath(targetpath)
 						loglist.append({'log':logname,'path':targetpath,'setname':setname,'sourcename':sourcename})
 						logset[runname][setname][sourcename]=logname
 						masterpath=logpath+'master/';	#	md5vali-master-
@@ -214,8 +218,13 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,m
 				targetpath = targetpath+'/'
 				###### str replace // to /.  rstrip /. add /? (test each way)
 
+				timeset['_md5sets'][setname]={}
+				timeset['_md5sets'][setname][sourcename]={}
+				timeset['_md5sets'][setname][sourcename]['start']=datetime.datetime.now()
+
 				driveutils.makeMD5Fast(targetpath+'/',logname,md5opts['walkopts'])
 
+				timeset['_md5sets'][setname][sourcename]['end']=datetime.datetime.now()
 
 
 				if '_errs' in md5opts['walkopts'].keys():
@@ -294,6 +303,7 @@ def splitMasterLog(masterlog,logfolder,tmpfolder,runname,timestamp):
 		if 'obj' in masterpieces[setname].keys():
 			masterpieces[setname]['obj'].close()
 			del masterpieces[setname]['obj']
+		driveutils.sortLogByPath(masterpieces[setname]['path'])
 
 	return masterpieces
 
@@ -310,8 +320,9 @@ def md5SourcesAndTargets(targetlist,runname,infosets,logfolder,tmpfolder,dataset
 
 		masterroute = datasets['mastset'][runname]
 
-		if 'usemd5log' in md5opts['compopts'].keys() and 'logpath' in md5opts['compopts']['usemd5log'].keys():
-			masterlog=md5opts['compopts']['usemd5log']['logpath']
+		if 'useold_md5log' in md5opts['compopts'].keys() and 'logpath' in md5opts['compopts']['useold_md5log'].keys():
+			masterlog=md5opts['compopts']['useold_md5log']['logpath']
+			driveutils.sortLogByPath(masterlog)
 		else:
 			masterlog=grabAMasterLog(masterroute,datasets['timestr'],md5opts['compopts'])
 		masterlogset=splitMasterLog(masterlog,logfolder,tmpfolder,runname,datasets['timestr'])
@@ -320,11 +331,11 @@ def md5SourcesAndTargets(targetlist,runname,infosets,logfolder,tmpfolder,dataset
 
 		if runname in datasets['mastset'].keys():
 			print '========================================='
-			beginCompareStage(timeset,datasets['logset'][runname],runname,masterlogset,datasets['mastset'][runname],datasets['timestr'],targetlist,datasets,md5opts['compopts'])
+			beginCompareStage(timeset,datasets['logset'][runname],runname,masterlogset,tmpfolder,datasets['mastset'][runname],datasets['timestr'],targetlist,datasets,md5opts['compopts'])
 
 
 
-def beginCompareStage(timeset,logsetlist,runname,masterlogset,masterroute,timestamp,targetlist,datasets,useopts=None):
+def beginCompareStage(timeset,logsetlist,runname,masterlogset,tmpfolder,masterroute,timestamp,targetlist,datasets,useopts=None):
 	if useopts is None:
 		useopts={}
 	useopts['_holddata']={}
@@ -353,7 +364,7 @@ def beginCompareStage(timeset,logsetlist,runname,masterlogset,masterroute,timest
 
 		if logsetname in masterlogset.keys():
 			masterlog = masterlogset[logsetname]['path']
-			comparedata.compareSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logsetlist[logsetname],logsetname,targetlist,datasets,useopts)
+			comparedata.compareSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logsetlist[logsetname],logsetname,targetlist,tmpfolder,datasets,useopts)
 			driveutils.sortLogByPath(newmasterlog+".tmp")
 
 
@@ -363,14 +374,39 @@ def beginCompareStage(timeset,logsetlist,runname,masterlogset,masterroute,timest
 	duration_split = timeset['postsplit'] - timeset['postmd5']
 	duration_run = timeset['postrun'] - timeset['postsplit']
 
+	duration_md5arr = []
+	if '_md5sets' in timeset.keys():
+		for setname,setitem in timeset['_md5sets'].iteritems():
+			for sourcename,setitem2 in timeset['_md5sets'][setname].iteritems():
+				s = timeset['_md5sets'][setname][sourcename]['start']
+				e = timeset['_md5sets'][setname][sourcename]['end']
+				duration_md5arr.append({'setname':setname,'sourcename':sourcename,'time':(e-s)})
+
 	summarylog = masterroute+'md5vali-summary-'+timestamp+'.txt'
 	driveutils.createNewLog(summarylog,True)
 
 	print '----------------------------------------------'
 	driveutils.addToLog( "----------------------------------------------\n", summarylog )
 	driveutils.addToLog( "MD5 Duration: "+str(duration_md5)+"\n", summarylog )
+	if (len(duration_md5arr) > 0):
+		for dur in duration_md5arr:
+			driveutils.addToLog( " - MD5 dur stop: "+dur['setname']+","+dur['sourcename']+": "+str(dur['time'])+"\n", summarylog )
 	driveutils.addToLog( "Split Duration: "+str(duration_split)+"\n", summarylog )
 	driveutils.addToLog( "Check Duration: "+str(duration_run)+"\n", summarylog )
+
+
+	movedlogpath=re.findall('^(.*)\/',newmasterlog)[0]+'/quicklists/moved-list-'+timestamp+'.txt'
+	if os.path.exists(movedlogpath):
+		print '----------------------------------------------'
+		print
+		driveutils.addToLog( "----------------------------------------------\n\n", summarylog )
+		print '----------- master files moved -----------'
+		driveutils.addToLog( "----------- master files moved -----------\n", summarylog )
+		with open(movedlogpath) as f:
+		    for rline in f.readlines():
+				print rline.rstrip()
+				driveutils.addToLog( rline.rstrip()+"\n", summarylog )
+
 
 	print '----------------------------------------------'
 	print
@@ -471,8 +507,24 @@ def logAndCompTargets(targetlist, logfolder,tmpfolder, md5opts=None):
 		timeset={}
 		timeset['premd5'] = datetime.datetime.now()
 
+		if 'justdropmissing' in md5opts['compopts'].keys():
+			masterroute = logfolder+'/md5vali/'+runname+'/master/'
+			if 'useold_md5log' in md5opts['compopts'].keys() and 'logpath' in md5opts['compopts']['useold_md5log'].keys():
+				masterlog=md5opts['compopts']['useold_md5log']['logpath']
+			else:
+				masterlog=grabAMasterLog(masterroute,timestr,md5opts['compopts'])
+
+			print 'xxx',masterlog
+			masterlogtime = (re.findall(r'-master-(\d+-\d+)\.txt\s*$',masterlog)[0])
+			masterlogpath = (re.findall(r'^(\/.*\/)[^\/]+\.txt\s*$',masterlog)[0])
+			missinglist = masterlogpath+'quicklists/missing-list-'+masterlogtime+'.txt'
+			if os.path.exists(missinglist):
+				dropmissed.dropMissing(masterlog,missinglist,timestr, masterroute)
+				return
+			return
+
 		tmplogs.clearTmpMD5Logs('md5vali',runname,logfolder)
-		datasets = createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,md5opts)
+		datasets = createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,timeset,md5opts)
 
 		timeset['postmd5'] = datetime.datetime.now()
 
@@ -486,7 +538,6 @@ def logAndCompTargets(targetlist, logfolder,tmpfolder, md5opts=None):
 		tmppath = tmpfolder+'/md5vali/'+runname+'/'+timestr+'/';
 		logpath = logfolder+'/md5vali/'+runname+'/';
 
-		continue
 		for tmp in tmparr:
 			l = logpath+tmp
 			l2 = tmppath+tmp

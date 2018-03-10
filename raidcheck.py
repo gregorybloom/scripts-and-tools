@@ -91,10 +91,12 @@ targetList['raid_backup']['foldersets']['m_unsortedset']['target1']='/RAID_BACKU
 targetList['raid_backup']['foldersets']['m_unsortedset']['target3']='/RAID_BACKUP/Media/-unsorted'
 
 
-#do_only=['servscriptset','miscset','m_recordingset']
-#for k in targetList['raid_backup']['foldersets'].keys():
-#	if k not in do_only:
-#		del targetList['raid_backup']['foldersets'][k]
+do_only=['servscriptset','miscset','m_recordingset','videoset']
+do_only=['m_recordingset']
+for k in targetList['raid_backup']['foldersets'].keys():
+	if k not in do_only:
+#		continue
+		del targetList['raid_backup']['foldersets'][k]
 
 
 
@@ -104,10 +106,6 @@ runopts['compopts']={}
 runopts['walkopts']['numthreads']=2
 #runopts['walkopts']['printon']=10
 
-if "_askdropold" in arglist:
-	runopts['compopts']['askdropold']=1
-elif "_dropold" in arglist:
-	runopts['compopts']['dropold']=1
 
 if "_printon" in arglist:
 	pt=arglist.index("_printon")+1
@@ -120,16 +118,24 @@ runopts['walkopts']['filters']={'deny':["garbage"],'allowonly':["imgs","videos",
 if "_testfromlog" in arglist:
 	pt=arglist.index("_testfromlog")+1
 	if pt < len(arglist):
-		runopts['compopts']['usemd5log']={'logpath':arglist[pt]}
+		runopts['compopts']['useold_md5log']={'logpath':arglist[pt]}
 if "_testatlog" in arglist:
 	pt=arglist.index("_testatlog")+1
 	if pt < len(arglist):
-		runopts['walkopts']['usemd5log']={'logpath':arglist[pt],'setsource':'source'}
+		runopts['walkopts']['usenew_md5log']={'logpath':arglist[pt],'setsource':'source'}
 if "_outputatlog" in arglist:
 	pt=arglist.index("_outputatlog")+1
 	if pt < len(arglist):
 		runopts['compopts']['useoutputlog']={'logpath':arglist[pt]}
 
+
+if "verbose" in arglist:
+	runopts['compopts']['verbose']=True
+if "dropold" in arglist:
+	runopts['compopts']['justdropmissing']=True
+
+if "skipmovecheck" in arglist:
+	runopts['compopts']['skipmovecheck']=True
 
 logfolder="/var/log/validates"
 tmpfolder="/tmp/validates"
@@ -137,5 +143,9 @@ checkmd5s.logAndCompTargets(targetList,logfolder,tmpfolder,runopts)
 
 #	https://askubuntu.com/questions/380238/how-to-clean-tmp
 #	find /tmp -ctime +10 -exec rm -rf {} +
+
+#	sed -i -e 's/\/\/\//\/\//g' testfn.txt
+#	for i in $(grep -inrlP "\/\/\/" /var/log/validates/md5vali/raid_backup/master/); do echo "$i" | grep -P "\-master\-" >> fixlist.txt; done
+#	for i in $(cat fixlist.txt); do echo "----------" >> fixrun.txt; echo "$i" >> fixrun.txt; tail -n 2 "$i" >> fixrun.txt; sudo sed -i -e 's/\/\/\//\/\//g' "$i"; tail -n 2 "$i" >> fixrun.txt; done
 
 ###	/etc/fstab			-- scan/parse this for mounted info

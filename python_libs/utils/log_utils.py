@@ -150,11 +150,13 @@ def createNewLog(logname, reuse=False):
 
 
 
-def sortLogByPath(logpath):
+def sortLogByPath(logpath,order=3):
+	if not os.path.exists(logpath+".tmp"):
+		return
 	writefile = open(logpath+'.tmp', 'w')
 	readfile = csv.reader(open(logpath), delimiter=",")
-	filteredRows = filter(lambda x: len(x) > 3, readfile)
-	for line in sorted(filteredRows, key=lambda line: line[3]):
+	filteredRows = filter(lambda x: len(x) > order, readfile)
+	for line in sorted(filteredRows, key=lambda line: line[order]):
 		strng=','.join(line)
 		writefile.write(strng+'\n')
 	writefile.close()
@@ -184,6 +186,7 @@ def decomposeFileLog(logstr, logtype):
 		return Lcompare
 
 def makeMD5Fast( dirpath, targetlog, opts ):
+#	https://stackoverflow.com/questions/33152171/why-does-multiprocessing-process-join-hang
 	def md5er(q,log,dir,filters=None):
 		while True:
 			fname=q.get()

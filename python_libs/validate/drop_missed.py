@@ -7,6 +7,66 @@ from sys import version_info
 
 
 
+
+def dropMissing(oldmasterlog,missinglist,timestamp,masterroute):
+	newmasterlogpath = masterroute+'master-'+timestamp+'/'
+
+	newmasterlog = newmasterlogpath+'md5vali-master-'+timestamp+'.txt'
+	summarylog = masterroute+'md5vali-summary-'+timestamp+'.txt'
+	droppedlog = newmasterlogpath+'/quicklists/dropped-list-'+timestamp+'.txt'
+
+	driveutils.createNewLog(newmasterlog+".tmp",True)
+	newmasterlogfile = open(newmasterlog+".tmp", 'ab')
+
+	driveutils.createNewLog(summarylog+".tmp",True)
+	newsummarylogfile = open(summarylog+".tmp", 'ab')
+
+	driveutils.createNewLog(droppedlog+".tmp",True)
+	newdroppedlogfile = open(droppedlog+".tmp", 'ab')
+
+	driveutils.addToLog( "----------------------------------------------\n", summarylog )
+
+	with open(oldmasterlog) as f:
+	    for rline in f.readlines():
+			fulltext = rline
+
+			filematch = False
+			Acompare = driveutils.decomposeFileLog(rline,1)
+			with open(missinglist) as f2:
+			    for rline2 in f2.readlines():
+					fulltext2 = rline2
+
+					Bcompare = driveutils.decomposeFileLog(rline2,1)
+
+					checkmatch = True
+					compareArr = ['sha', 'bytesize', 'fullpath']
+					for compitem in compareArr:
+						if compitem not in Acompare.keys() or compitem not in Bcompare.keys():
+							checkmatch = False
+						elif Acompare[compitem] != Bcompare[compitem]:
+							checkmatch = False
+
+					if checkmatch:
+						filematch = True
+						break
+
+			if filematch:
+				newsummarylogfile.write(fulltext.rstrip()+"\n")
+				newdroppedlogfile.write(fulltext.rstrip()+"\n")
+			else:
+				newmasterlogfile.write(fulltext.rstrip()+"\n")
+
+	f.close()
+	newmasterlogfile.close()
+	newsummarylogfile.close()
+	newdroppedlogfile.close()
+
+	driveutils.sortLogByPath(newmasterlog+".tmp")
+	os.rename(newmasterlog+".tmp",newmasterlog)
+	os.rename(summarylog+".tmp",summarylog)
+	os.rename(droppedlog+".tmp",droppedlog)
+
+
 def logMissedFolders(datasets,summarylog,useopts):
 
 	if '_holddata' in useopts.keys():
@@ -49,7 +109,7 @@ def logMissedFolders(datasets,summarylog,useopts):
 
 
 #def actOnUseOpts(stage,useopts,masterlist,logsetname,etcdata=None):
-def actOnUseOpts(stage,useopts,steplist,masterlist,runname,logsetname,compSET):
+def actOnUseOpts(stage,datasets,useopts,steplist,masterlist,runname,logsetname,compSET):
 	py3 = version_info[0] > 2 #creates boolean value for test that Python major version > 2
 
 	if '_holddata' not in useopts.keys():
@@ -110,16 +170,12 @@ def actOnUseOpts(stage,useopts,steplist,masterlist,runname,logsetname,compSET):
 					else:
 						conf = raw_input()
 					print
-					########################################################  WORKING FROM HERE -- ######################################
-					# look at 'dropold' condition below.  Track down what this results in and why?
+
 					if re.match("^\s*([Yy](?:[Ee][Ss])?)\s*$",conf):
 						print "Removed."
 						for obj in useopts['_holddata']['dropoldlogs']:
 							if obj['runname']==runname and obj['logsetname']==logsetname and 'ask' in obj.keys() and obj['ask']==True:
 								del obj['ask']
-#						if 'dropold' not in useopts['_holddata'].keys():
-#							useopts['_holddata']['dropold']=[]
-#						useopts['_holddata']['dropold'].extend(heldlist)
 
 					else:
 						newlog=masterlist['_newmaster']
@@ -134,3 +190,26 @@ def actOnUseOpts(stage,useopts,steplist,masterlist,runname,logsetname,compSET):
 
 									newlog['obj'].write(rline+"\n")
 						print "Canceling removal."
+
+		# FOR ANY
+		if '_holddata' in useopts.keys():
+			if 'dropoldlogs' in useopts['_holddata'].keys():
+				heldlist=[]
+				newmasterlogpath = datasets['mastset'][runname]+'master-'+masterlist['_newmaster']['newtime']+'/'
+				droppedlog = newmasterlogpath+'/quicklists/dropped-list-'+masterlist['_newmaster']['newtime']+'.txt'
+
+				for obj in useopts['_holddata']['dropoldlogs']:
+					if obj['runname']==runname and obj['logsetname']==logsetname and 'ask' not in obj.keys():
+
+						driveutils.createNewLog(droppedlog+".tmp",True)
+						newdroppedlog = open(droppedlog+".tmp", 'ab')
+
+						with open(obj['path']) as thefile:
+						    for rline in thefile.readlines():
+								newdroppedlog.write(rline.rstrip()+"\n")
+						thefile.close()
+						newdroppedlog.close()
+						del obj['runname']
+						del obj['logsetname']
+						del obj['path']
+						del obj
