@@ -91,11 +91,12 @@ targetList['raid_backup']['foldersets']['m_unsortedset']['target1']='/RAID_BACKU
 targetList['raid_backup']['foldersets']['m_unsortedset']['target3']='/RAID_BACKUP/Media/-unsorted'
 
 
+
 do_only=['servscriptset','miscset','m_recordingset','videoset']
-do_only=['m_recordingset']
+do_only=['miscset','m_recordingset']
 for k in targetList['raid_backup']['foldersets'].keys():
 	if k not in do_only:
-#		continue
+		break
 		del targetList['raid_backup']['foldersets'][k]
 
 
@@ -114,6 +115,7 @@ if "_printon" in arglist:
 
 
 runopts['walkopts']['filters']={'deny':["garbage"],'allowonly':["imgs","videos","docs","zip","music","misc"]}
+#runopts['walkopts']['method']={'slow':[],'fast':[]}
 
 if "_testfromlog" in arglist:
 	pt=arglist.index("_testfromlog")+1
@@ -134,8 +136,9 @@ if "verbose" in arglist:
 if "dropold" in arglist:
 	runopts['compopts']['justdropmissing']=True
 
-if "skipmovecheck" in arglist:
-	runopts['compopts']['skipmovecheck']=True
+
+#if "skipmovecheck" in arglist:
+#	runopts['compopts']['skipmovecheck']=True
 
 logfolder="/var/log/validates"
 tmpfolder="/tmp/validates"
@@ -149,3 +152,9 @@ checkmd5s.logAndCompTargets(targetList,logfolder,tmpfolder,runopts)
 #	for i in $(cat fixlist.txt); do echo "----------" >> fixrun.txt; echo "$i" >> fixrun.txt; tail -n 2 "$i" >> fixrun.txt; sudo sed -i -e 's/\/\/\//\/\//g' "$i"; tail -n 2 "$i" >> fixrun.txt; done
 
 ###	/etc/fstab			-- scan/parse this for mounted info
+
+### resume a job, disowned
+#  ctrl Z
+#  jobs -l		# look for [jnum#] pid
+#  bg <jnum#>
+#  disown -h <jnum#>   # or -a for all.  or disown to affect all backgrounded processes

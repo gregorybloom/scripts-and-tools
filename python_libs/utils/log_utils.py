@@ -151,7 +151,7 @@ def createNewLog(logname, reuse=False):
 
 
 def sortLogByPath(logpath,order=3):
-	if not os.path.exists(logpath+".tmp"):
+	if os.path.exists(logpath+".tmp"):
 		return
 	writefile = open(logpath+'.tmp', 'w')
 	readfile = csv.reader(open(logpath), delimiter=",")

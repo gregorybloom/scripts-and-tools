@@ -272,8 +272,7 @@ def stepCompareLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,
 		matchnames = writeOutput(compSET,masterlist['_newmaster'],runname,logsetname,steplist,masterlist,datasets,useopts)
 
 		outputxt = '# '+str(c)+' ! '+logsetname+', '+lowest+' ! '+compSET["_summary"]['pstate']+', '+compSET["_summary"]['sstate']+', '+str(matchnames)
-		if 'verbose' in useopts.keys() and useopts['verbose'] == True:
-			print outputxt
+		print outputxt
 
 
 	comparefns.incrementPtrs(compSET['_summary']['compset'],steplist)

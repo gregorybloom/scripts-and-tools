@@ -152,7 +152,7 @@ def stepSearchLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,u
 
 	matchnames = writeMoveOptions(compSET,masterlist['_newmaster'],runname,logsetname,steplist,masterlist,tmpfolder,datasets,useopts)
 
-	outputxt = 's# '+str(c)+' ! '+logsetname+', '+lowest+' ! '+compSET["_summary"]['pstate']+', '+compSET["_summary"]['sstate']+', '+str(matchnames)
+	outputxt = 'precheck # '+str(c)+' ! '+logsetname+', '+lowest+' ! '+compSET["_summary"]['pstate']+', '+compSET["_summary"]['sstate']+', '+str(matchnames)
 	print outputxt
 
 	comparefns.incrementPtrs(compSET['_summary']['compset'],steplist)
@@ -409,7 +409,6 @@ def searchForMove(runname,logsetname,tmpfolder,compSET,masterlist,datasets,useop
 						pathFrom = '/'+ inobj['from'].lstrip('/')
 						pathTo = '/'+ inobj['to'].lstrip('/')
 
-#						print '*1',compState,pathComp,inobjstr
 						if runname != inrunname or logsetname != inlogsetname or sourcename != insourcename:
 							continue
 
