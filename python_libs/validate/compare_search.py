@@ -279,7 +279,7 @@ def	buildMoveLog(runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts=
 			shutil.copy(tmppath3,tmppath3+".ext")
 
 			c = 0
-			with open(tmppath2) as f:
+			with open(tmppath2,'rb') as f:
 			    for rline in f.readlines():
 					moveobj = {}
 
@@ -306,7 +306,7 @@ def	buildMoveLog(runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts=
 					c2 = 0
 #					print '------'
 #					print '.',outsha,outpath
-					with open(tmppath3+".ext") as f2:
+					with open(tmppath3+".ext",'rb') as f2:
 					    for rline2 in f2.readlines():
 
 							inrunname = re.findall('^([^,]*),\s*',rline2)[0]
@@ -358,7 +358,7 @@ def	buildMoveLog(runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts=
 					c3 = 0
 					driveutils.createNewLog(tmppath3+".ext.tmp",True)
 					writelog = open(tmppath3+".ext.tmp", 'ab')
-					with open(tmppath3) as f2:
+					with open(tmppath3, 'rb') as f2:
 					    for rline2 in f2.readlines():
 #							print '   ', c3,best_fit['count'],'  '
 #							print '      ',rline2.rstrip()
@@ -395,7 +395,7 @@ def searchForMove(runname,logsetname,tmpfolder,compSET,masterlist,datasets,useop
 		if compState == 'missing' or compState == 'new':
 			found_item = None
 			if os.path.exists(movedpath):
-				with open(movedpath) as f2:
+				with open(movedpath, 'rb') as f2:
 				    for rline2 in f2.readlines():
 
 						inrunname = re.findall('^([^,]*),\s*',rline2)[0]
@@ -406,8 +406,8 @@ def searchForMove(runname,logsetname,tmpfolder,compSET,masterlist,datasets,useop
 						inobj = json.loads(inobjstr)
 
 						pathComp = '/'+ compSET['_sources'][sourcename]['cur_path'].lstrip('/')
-						pathFrom = '/'+ inobj['from'].lstrip('/')
-						pathTo = '/'+ inobj['to'].lstrip('/')
+						pathFrom = '/'+ inobj['from'].lstrip('/').encode('utf-8')
+						pathTo = '/'+ inobj['to'].lstrip('/').encode('utf-8')
 
 						if runname != inrunname or logsetname != inlogsetname or sourcename != insourcename:
 							continue
@@ -426,7 +426,14 @@ def searchForMove(runname,logsetname,tmpfolder,compSET,masterlist,datasets,useop
 							continue
 
 
-#						print '*3',compState,pathFrom,'==',pathComp,'==',pathTo
+						print '*3a',compState,' and '
+						print '*3b',pathFrom,'==',
+						print '*3c',pathComp,'==',
+						print '*3d',pathTo,' and ',
+						print '*3e',compSET['_oldmaster']['cur_path']
+
+						print '*3',compState,' and ',pathFrom,'==',pathComp,'==',pathTo,' and ',compSET['_oldmaster']['cur_path']
+
 						if compState == 'missing' and pathFrom != pathComp and pathFrom != compSET['_oldmaster']['cur_path']:
 							continue
 						if compState == 'new' and pathTo != pathComp:

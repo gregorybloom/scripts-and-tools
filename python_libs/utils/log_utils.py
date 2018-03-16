@@ -151,18 +151,22 @@ def createNewLog(logname, reuse=False):
 
 
 def sortLogByPath(logpath,order=3):
-	if os.path.exists(logpath+".tmp"):
+	if os.path.exists(logpath+".sorttmp"):
 		return
-	writefile = open(logpath+'.tmp', 'w')
+	writefile = open(logpath+'.sorttmp', 'wb')
 	readfile = csv.reader(open(logpath), delimiter=",")
-	filteredRows = filter(lambda x: len(x) > order, readfile)
-	for line in sorted(filteredRows, key=lambda line: line[order]):
+#	filteredRows = filter(lambda x: len(x) > order, readfile)
+	filteredRows = filter(lambda x: (os.path.sep not in x, x), readfile)
+	for line in sorted(filteredRows, key=lambda line: ','.join(line[order:])):
 		strng=','.join(line)
 		writefile.write(strng+'\n')
 	writefile.close()
 
 	os.remove(logpath)
-	os.rename(logpath+".tmp",logpath)
+	os.rename(logpath+".sorttmp",logpath)
+#	print 'sorted: ',logpath
+
+
 
 
 def decomposeFileLog(logstr, logtype):

@@ -83,9 +83,14 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 			masterline = newmasterstart+movepath+"\n"
 
 
+		mtest = None
+		try:
+			mtest = masterline.encode('utf-8')
+		except UnicodeDecodeError as exception:
+			mtest = masterline
 		if 'verbose' in useopts.keys() and useopts['verbose'] == True:
-			print "==== ",masterline
-		newlog['obj'].write(masterline)
+			print "==== ",mtest
+		newlog['obj'].write(mtest)
 
 
 		if allmoved and not moveconf and movepath is not None and oldmasterline is not None:
@@ -153,16 +158,28 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 				driveutils.createNewLog(movedlogpath,True)
 
 				outstring = sourcename+" - moved_fr, "+newsourcestart+sourceobj['moved_from']
+				mtest = None
+				try:
+					ostrtest = outstring.encode('utf-8')
+				except UnicodeDecodeError as exception:
+					ostrtest = outstring
+
 				if 'verbose' in useopts.keys() and useopts['verbose'] == True:
-					print outstring
-				driveutils.addToLog( outstring+"\n", logpath )
-				driveutils.addToLog( outstring+"\n", movedlogpath)
+					print ostrtest
+				driveutils.addToLog( ostrtest+"\n", logpath )
+				driveutils.addToLog( ostrtest+"\n", movedlogpath)
 
 				outstring = sourcename+" - moved_to, "+newsourcestart+sourceobj['moved_to']
+				mtest = None
+				try:
+					ostrtest = outstring.encode('utf-8')
+				except UnicodeDecodeError as exception:
+					ostrtest = outstring
+
 				if 'verbose' in useopts.keys() and useopts['verbose'] == True:
-					print outstring
-				driveutils.addToLog( outstring+"\n", logpath )
-				driveutils.addToLog( outstring+"\n", movedlogpath)
+					print ostrtest
+				driveutils.addToLog( ostrtest+"\n", logpath )
+				driveutils.addToLog( ostrtest+"\n", movedlogpath)
 				driveutils.addToLog( "------\n", movedlogpath)
 			else:
 				highlight = sourceobj['state']
@@ -284,13 +301,19 @@ def stepCompareLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,
 	return {'count':c+1,'lowest':lowest}
 
 
-def compareSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts=None):
+def compareSourcesAndTargets(runname,timeset,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts=None):
 	if useopts is None:
 		useopts={}
 
+
 	if 'skipmovecheck' not in useopts.keys() or not useopts['skipmovecheck']:
+		timeset['compare']['_parts']['_search'][logsetname] = {}
+		timeset['compare']['_parts']['_search'][logsetname]['start'] = datetime.datetime.now()
 		comparesearch.searchSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts)
 		comparesearch.buildMoveLog(runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts)
+		timeset['compare']['_parts']['_search'][logsetname]['end'] = datetime.datetime.now()
+
+	timeset['compare']['_parts']['_compare'][logsetname]['start'] = datetime.datetime.now()
 	steplist={}
 
 	for sourcename,logpath in logset.iteritems():
@@ -339,5 +362,6 @@ def compareSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logset,log
 
 	comparefns.closeUpFiles(steplist)
 	comparefns.closeUpFiles(masterlist)
+	timeset['compare']['_parts']['_compare'][logsetname]['end'] = datetime.datetime.now()
 #	return
 #	os.rename(newmasterlog+".tmp",newmasterlog)

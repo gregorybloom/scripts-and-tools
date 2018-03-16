@@ -31,8 +31,8 @@ def concatLogGroups(logparts):
 
 
 
-def grabAMasterLog(masterpath,timestamp,useopts):
-	masterlog = getBestMaster(masterpath, useopts)
+def grabAMasterLog(masterpath,timestamp,compopts):
+	masterlog = getBestMaster(masterpath, compopts)
 	if masterlog == None:
 		vals = timestamp.split('-')
 		val1 = int(vals[0])
@@ -48,7 +48,7 @@ def grabAMasterLog(masterpath,timestamp,useopts):
 	masterlog=masterpath+masterlog
 	return masterlog
 
-def getBestMaster(masterpath,useopts):
+def getBestMaster(masterpath,compopts):
 	def checkMasterName(val1,val2,masterpath):
 		val1i=val1
 		val2i=val2
@@ -113,11 +113,11 @@ def getBestMaster(masterpath,useopts):
 		bestmaster = buildMasterName(bestfit1,bestfit2)
 		return bestmaster
 
-def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,timeset,md5opts=None):
-	if md5opts is None:
-		md5opts={}
-	if 'walkopts' not in md5opts.keys():
-		md5opts['walkopts']={}
+def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,timeset,runopts=None):
+	if runopts is None:
+		runopts={}
+	if 'walkopts' not in runopts.keys():
+		runopts['walkopts']={}
 
 	logset={}
 	mastset={}
@@ -126,14 +126,15 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 
 	if runname not in logset.keys():
 		logset[runname]={}
-	logpath = logfolder+'/md5vali/'+runname+'/';
-	tmppath = tmpfolder+'/md5vali/'+runname+'/'+timestr+'/';
+	readname=runopts['compopts']['readname']
+	logpath = logfolder+'/md5vali/'+readname+'/'+runname+'/';
+	tmppath = tmpfolder+'/md5vali/'+readname+'/'+runname+'/'+timestr+'/';
 
-	timeset['_md5sets'] ={}
+	timeset['md5walk']['_parts'] = {}
 
-	if 'usenew_md5log' in md5opts['walkopts'].keys():
+	if 'usenew_md5log' in runopts['walkopts'].keys():
 
-		uselog=md5opts['walkopts']['usenew_md5log']['logpath']
+		uselog=runopts['walkopts']['usenew_md5log']['logpath']
 		if os.path.exists(uselog) and os.path.isfile(uselog):
 			print "Using ",uselog
 			driveutils.sortLogByPath(uselog)
@@ -142,7 +143,7 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 				for setname,folderset in infosets['foldersets'].iteritems():
 					for sourcename,folderpath in folderset.iteritems():
 
-						if sourcename != md5opts['walkopts']['usenew_md5log']['setsource']:
+						if sourcename != runopts['walkopts']['usenew_md5log']['setsource']:
 							continue
 						if sourcename not in foundlist.keys():
 							continue
@@ -219,45 +220,45 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 				###### str replace // to /.  rstrip /. add /? (test each way)
 
 				method=['fast']
-				if 'method' in md5opts['walkopts'].keys():
+				if 'method' in runopts['walkopts'].keys():
 					method=[]
-					if 'slow' in md5opts['walkopts']['method'].keys():
-						if setname in md5opts['walkopts']['method']['slow']:
+					if 'slow' in runopts['walkopts']['method'].keys():
+						if setname in runopts['walkopts']['method']['slow']:
 							method.append['slow']
-					if 'fast' in md5opts['walkopts']['method'].keys():
-						if setname in md5opts['walkopts']['method']['fast']:
+					if 'fast' in runopts['walkopts']['method'].keys():
+						if setname in runopts['walkopts']['method']['fast']:
 							method.append['fast']
 				if len(method) == 0:
 					method=['fast']
 
-				timeset['_md5sets'][setname]={}
-				timeset['_md5sets'][setname][sourcename]={}
+				timeset['md5walk']['_parts'][setname]={}
+				timeset['md5walk']['_parts'][setname][sourcename]={}
 
 				if 'slow' in method:
-					timeset['_md5sets'][setname][sourcename]['slow']={}
-					timeset['_md5sets'][setname][sourcename]['slow']['start']=datetime.datetime.now()
+					timeset['md5walk']['_parts'][setname][sourcename]['slow']={}
+					timeset['md5walk']['_parts'][setname][sourcename]['slow']['start']=datetime.datetime.now()
 
-					filelist.beginMD5Walk(targetpath+'/',logname,md5opts['walkopts'])
+					filelist.beginMD5Walk(targetpath+'/',logname,runopts['walkopts'])
 
-					timeset['_md5sets'][setname][sourcename]['slow']['end']=datetime.datetime.now()
+					timeset['md5walk']['_parts'][setname][sourcename]['slow']['end']=datetime.datetime.now()
 				if 'fast' in method:
-					timeset['_md5sets'][setname][sourcename]['fast']={}
-					timeset['_md5sets'][setname][sourcename]['fast']['start']=datetime.datetime.now()
+					timeset['md5walk']['_parts'][setname][sourcename]['fast']={}
+					timeset['md5walk']['_parts'][setname][sourcename]['fast']['start']=datetime.datetime.now()
 
-					driveutils.makeMD5Fast(targetpath+'/',logname,md5opts['walkopts'])
+					driveutils.makeMD5Fast(targetpath+'/',logname,runopts['walkopts'])
 
-					timeset['_md5sets'][setname][sourcename]['fast']['end']=datetime.datetime.now()
+					timeset['md5walk']['_parts'][setname][sourcename]['fast']['end']=datetime.datetime.now()
 
 
-				if '_errs' in md5opts['walkopts'].keys():
-					if '_folders' in md5opts['walkopts']['_errs'].keys():
+				if '_errs' in runopts['walkopts'].keys():
+					if '_folders' in runopts['walkopts']['_errs'].keys():
 						if 'folderload' not in errset.keys():
 							errset['folderload']={}
 						if setname not in errset['folderload'].keys():
 							errset['folderload'][setname]={}
 						if sourcename not in errset['folderload'][setname].keys():
 							errset['folderload'][setname][sourcename]=[]
-						errset['folderload'][setname][sourcename].extend(md5opts['walkopts']['_errs']['_folders'])
+						errset['folderload'][setname][sourcename].extend(runopts['walkopts']['_errs']['_folders'])
 
 				driveutils.sortLogByPath(logname)
 				loglist.append({'log':logname,'path':targetpath,'setname':setname,'sourcename':sourcename})
@@ -289,8 +290,10 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 
 	return newdata
 
-def splitMasterLog(masterlog,logfolder,tmpfolder,runname,timestamp):
-	tmppath = tmpfolder+'/md5vali/'+runname+'/'+timestamp+'/';
+def splitMasterLog(masterlog,logfolder,tmpfolder,runname,timestamp,compopts):
+
+	readname=compopts['readname']
+	tmppath = tmpfolder+'/md5vali/'+readname+'/'+runname+'/'+timestamp+'/';
 	tmppath += 'sections/'
 
 	masterpieces={}
@@ -332,36 +335,41 @@ def splitMasterLog(masterlog,logfolder,tmpfolder,runname,timestamp):
 
 
 
-def md5SourcesAndTargets(targetlist,runname,infosets,logfolder,tmpfolder,datasets,timeset,md5opts=None):
-	if md5opts is None:
-		md5opts={}
-	if 'compopts' not in md5opts.keys():
-		md5opts['compopts']={}
+def md5SourcesAndTargets(targetlist,runname,infosets,logfolder,tmpfolder,datasets,timeset,runopts=None):
+	if runopts is None:
+		runopts={}
+	if 'compopts' not in runopts.keys():
+		runopts['compopts']={}
 
 	if runname in datasets['logset'].keys():
 
+		timeset['splitlogs'] = {}
+		timeset['splitlogs']['start'] = datetime.datetime.now()
+
 		masterroute = datasets['mastset'][runname]
 
-		if 'useold_md5log' in md5opts['compopts'].keys() and 'logpath' in md5opts['compopts']['useold_md5log'].keys():
-			masterlog=md5opts['compopts']['useold_md5log']['logpath']
+		if 'useold_md5log' in runopts['compopts'].keys() and 'logpath' in runopts['compopts']['useold_md5log'].keys():
+			masterlog=runopts['compopts']['useold_md5log']['logpath']
 			driveutils.sortLogByPath(masterlog)
 		else:
-			masterlog=grabAMasterLog(masterroute,datasets['timestr'],md5opts['compopts'])
+			masterlog=grabAMasterLog(masterroute,datasets['timestr'],runopts['compopts'])
 		driveutils.sortLogByPath(masterlog)
-		masterlogset=splitMasterLog(masterlog,logfolder,tmpfolder,runname,datasets['timestr'])
+		masterlogset=splitMasterLog(masterlog,logfolder,tmpfolder,runname,datasets['timestr'],runopts['compopts'])
 
-		timeset['postsplit'] = datetime.datetime.now()
+		timeset['compare'] = {}
+		timeset['compare']['start'] = datetime.datetime.now()
+
 
 		if runname in datasets['mastset'].keys():
 			print '========================================='
-			beginCompareStage(timeset,datasets['logset'][runname],runname,masterlogset,tmpfolder,datasets['mastset'][runname],datasets['timestr'],targetlist,datasets,md5opts['compopts'])
+			beginCompareStage(timeset,datasets['logset'][runname],runname,masterlogset,tmpfolder,datasets['mastset'][runname],datasets['timestr'],targetlist,datasets,runopts['compopts'])
 
 
 
-def beginCompareStage(timeset,logsetlist,runname,masterlogset,tmpfolder,masterroute,timestamp,targetlist,datasets,useopts=None):
-	if useopts is None:
-		useopts={}
-	useopts['_holddata']={}
+def beginCompareStage(timeset,logsetlist,runname,masterlogset,tmpfolder,masterroute,timestamp,targetlist,datasets,compopts=None):
+	if compopts is None:
+		compopts={}
+	compopts['_holddata']={}
 
 	debuglog = masterroute+'master-'+timestamp+'/' + 'md5vali-debug-'+datasets['timestr']+'.txt'
 
@@ -369,15 +377,19 @@ def beginCompareStage(timeset,logsetlist,runname,masterlogset,tmpfolder,masterro
 	newmasterlog=masterroute+'master-'+timestamp+'/'
 	newmasterlog+='md5vali-master-'+timestamp+'.txt'
 
-	if 'useoutputlog' in useopts.keys():
-		newmasterlog=useopts['useoutputlog']['logpath']
-
+	if 'useoutputlog' in compopts.keys():
+		newmasterlog=compopts['useoutputlog']['logpath']
 
 
 
 	##  Grab List of SetNames from datasets['logset'][runname]
 	loglistkeys = logsetlist.keys()
 	loglistkeys.sort()
+
+	timeset['compare']['_parts'] = {}
+	timeset['compare']['_parts']['_total'] = {}
+	timeset['compare']['_parts']['_search'] = {}
+	timeset['compare']['_parts']['_compare'] = {}
 	for logsetname in loglistkeys:
 		if logsetname == "_oldmaster" or logsetname == "newmaster":
 			print "**** ERROR!! ****"
@@ -386,25 +398,16 @@ def beginCompareStage(timeset,logsetlist,runname,masterlogset,tmpfolder,masterro
 			return
 
 		if logsetname in masterlogset.keys():
+			timeset['compare']['_parts']['_total'][logsetname] = {}
+
+			timeset['compare']['_parts']['_total'][logsetname]['start'] = datetime.datetime.now()
 			masterlog = masterlogset[logsetname]['path']
-			comparedata.compareSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logsetlist[logsetname],logsetname,targetlist,tmpfolder,datasets,useopts)
+			comparedata.compareSourcesAndTargets(runname,timeset,masterlog,newmasterlog,timestamp,logsetlist[logsetname],logsetname,targetlist,tmpfolder,datasets,compopts)
 			driveutils.sortLogByPath(newmasterlog+".tmp")
+			timeset['compare']['_parts']['_total'][logsetname]['end'] = datetime.datetime.now()
 
+	timeset['compare']['end'] = datetime.datetime.now()
 
-	timeset['postrun'] = datetime.datetime.now()
-
-	duration_md5 = timeset['postmd5'] - timeset['premd5']
-	duration_split = timeset['postsplit'] - timeset['postmd5']
-	duration_run = timeset['postrun'] - timeset['postsplit']
-
-	duration_md5arr = []
-	if '_md5sets' in timeset.keys():
-		for setname,setitem in timeset['_md5sets'].iteritems():
-			for sourcename,setitem2 in timeset['_md5sets'][setname].iteritems():
-				for pace,setitem3 in timeset['_md5sets'][setname][sourcename].iteritems():
-					s = timeset['_md5sets'][setname][sourcename][pace]['start']
-					e = timeset['_md5sets'][setname][sourcename][pace]['end']
-					duration_md5arr.append({'setname':setname,'sourcename':sourcename,'pace':pace,'time':(e-s)})
 
 
 
@@ -430,18 +433,18 @@ def beginCompareStage(timeset,logsetlist,runname,masterlogset,tmpfolder,masterro
 	print
 	driveutils.addToLog( "----------------------------------------------\n\n", summarylog )
 
-	dropmissed.logMissedFolders(datasets,summarylog,useopts)
+	dropmissed.logMissedFolders(datasets,summarylog,compopts)
 
 	os.rename(newmasterlog+".tmp",newmasterlog)
 	driveutils.sortLogByPath(newmasterlog)
 
 	sumlist={}
 ############################### BROKE AT HERE #######################################
-	for runname,runset in useopts['_holddata']['totals'].iteritems():
+	for runname,runset in compopts['_holddata']['totals'].iteritems():
 		if runname not in sumlist.keys():
 			sumlist[runname]={}
-		for logsetname,logset in useopts['_holddata']['totals'][runname].iteritems():
-			for sourcename,nameset in useopts['_holddata']['totals'][runname][logsetname].iteritems():
+		for logsetname,logset in compopts['_holddata']['totals'][runname].iteritems():
+			for sourcename,nameset in compopts['_holddata']['totals'][runname][logsetname].iteritems():
 				if sourcename not in sumlist[runname].keys():
 					sumlist[runname][sourcename]={}
 				for tresult,val in nameset.iteritems():
@@ -474,15 +477,15 @@ def beginCompareStage(timeset,logsetlist,runname,masterlogset,tmpfolder,masterro
 	driveutils.addToLog( "\n----------------------------------------------\n", summarylog )
 	driveutils.addToLog( "-----------------totals-----------------------\n", summarylog )
 
-	for runname,runset in useopts['_holddata']['totals'].iteritems():
-		for logsetname,logset in useopts['_holddata']['totals'][runname].iteritems():
-			for sourcename,nameset in useopts['_holddata']['totals'][runname][logsetname].iteritems():
+	for runname,runset in compopts['_holddata']['totals'].iteritems():
+		for logsetname,logset in compopts['_holddata']['totals'][runname].iteritems():
+			for sourcename,nameset in compopts['_holddata']['totals'][runname][logsetname].iteritems():
 				strr=""
 				for tresult,val in nameset.iteritems():
 					strr=strr+tresult+"="+str(val)+'  '
 				print ' - totals: ',runname,'-',logsetname,'-',sourcename,' : '+strr.rstrip()
 				driveutils.addToLog( ' - totals:  '+runname+' - '+logsetname+' - '+sourcename+'  :  '+strr.rstrip()+"\n", summarylog )
-#			useopts['_holddata']['totals'][runname][logsetname][tname][tresult]+=1
+#			compopts['_holddata']['totals'][runname][logsetname][tname][tresult]+=1
 	print '----------------------------------------------'
 	print '-----------------overall-----------------------'
 	driveutils.addToLog( "----------------------------------------------\n", summarylog )
@@ -500,7 +503,7 @@ def beginCompareStage(timeset,logsetlist,runname,masterlogset,tmpfolder,masterro
 	print '-----------------'
 
 	strr=""
-	for tresult,val in useopts['_holddata']['overalltotals'].iteritems():
+	for tresult,val in compopts['_holddata']['overalltotals'].iteritems():
 		strr=strr+tresult+': '+str(val)+',   '
 	print ' - sets:   ',(strr.rstrip())[0:-1]
 	strr=(strr.rstrip())[0:-1]
@@ -509,31 +512,73 @@ def beginCompareStage(timeset,logsetlist,runname,masterlogset,tmpfolder,masterro
 	driveutils.addToLog( "----------------------------------------------\n", summarylog )
 
 
+
+
+
+
+	duration_md5 = timeset['md5walk']['end'] - timeset['md5walk']['start']
+	duration_split = timeset['splitlogs']['end'] - timeset['splitlogs']['start']
+	duration_run = timeset['compare']['end'] - timeset['compare']['start']
+
+	duration_md5arr = []
+	if '_parts' in timeset['md5walk'].keys():
+		for setname,setitem in timeset['_md5sets'].iteritems():
+			for sourcename,setitem2 in timeset['_md5sets'][setname].iteritems():
+				for pace,setitem3 in timeset['_md5sets'][setname][sourcename].iteritems():
+					s = timeset['_md5sets'][setname][sourcename][pace]['start']
+					e = timeset['_md5sets'][setname][sourcename][pace]['end']
+					duration_md5arr.append({'setname':setname,'sourcename':sourcename,'pace':pace,'time':(e-s)})
+	duration_md5arr2 = []
+	if '_parts' in timeset['compare'].keys():
+		for typename,setitem in timeset['compare'].iteritems():
+			for setname,setitem2 in timeset['compare'][typename].iteritems():
+				s = timeset['compare'][typename][setname]['start']
+				e = timeset['compare'][typename][setname]['end']
+				duration_md5arr2.append({'typename':typename,'setname':setname,'time':(e-s)})
+
+
+
+	print '----------------------------------------------'
 	print "\nMD5 Time: ",str(duration_md5)
 	if (len(duration_md5arr) > 0):
 		for dur in duration_md5arr:
 			print " - MD5 dur stop: "+dur['setname']+","+dur['sourcename']+": "+str(dur['time'])
+	print '----------------------------------------------'
+	print "Compare Time: ",str(duration_run)
+	if (len(duration_md5arr2) > 0):
+		for dur in duration_md5arr2:
+			print " - compare dur stop: "+dur['typename']+","+dur['setname']+": "+str(dur['time'])
+	print '----------------------------------------------'
+	print "\nMD5 Time: ",str(duration_md5)
 	print "Split Time: ",str(duration_split)
-	print "Check Time: ",str(duration_run),"\n"
+	print "Compare Time: ",str(duration_run),"\n"
 
 
+	driveutils.addToLog( "----------------------------------------------\n", summarylog )
 	driveutils.addToLog( "MD5 Duration: "+str(duration_md5)+"\n", summarylog )
 	if (len(duration_md5arr) > 0):
 		for dur in duration_md5arr:
 			driveutils.addToLog( " - MD5 dur stop: "+dur['setname']+","+dur['sourcename']+":"+dur['pace']+": "+str(dur['time'])+"\n", summarylog )
+	driveutils.addToLog( "----------------------------------------------\n", summarylog )
+	driveutils.addToLog( "Compare Duration: "+str(duration_run)+"\n", summarylog )
+	if (len(duration_md5arr2) > 0):
+		for dur in duration_md5arr2:
+			driveutils.addToLog( " - compare dur stop: "+dur['typename']+","+dur['setname']+": "+str(dur['time'])+"\n", summarylog )
+	driveutils.addToLog( "----------------------------------------------\n", summarylog )
+	driveutils.addToLog( "MD5 Duration: "+str(duration_md5)+"\n", summarylog )
 	driveutils.addToLog( "Split Duration: "+str(duration_split)+"\n", summarylog )
-	driveutils.addToLog( "Check Duration: "+str(duration_run)+"\n", summarylog )
+	driveutils.addToLog( "Compare Duration: "+str(duration_run)+"\n", summarylog )
 
 
-#			useopts['_holddata']['overalltotals'][grouptype]=0
-	useopts['_holddata']['overalltotals']={}
+#			compopts['_holddata']['overalltotals'][grouptype]=0
+	compopts['_holddata']['overalltotals']={}
 	print '\n - summarized in:  ',summarylog
 	print '\n - logged in:  ',newmasterlog
 
 
-def logAndCompTargets(targetlist, logfolder,tmpfolder, md5opts=None):
-	if md5opts is None:
-		md5opts={}
+def logAndCompTargets(targetlist, logfolder,tmpfolder, runopts=None):
+	if runopts is None:
+		runopts={}
 
 	timestr = time.strftime("%Y%m%d-%H%M%S")
 	mountlist = findmounts.getMounts()
@@ -543,14 +588,14 @@ def logAndCompTargets(targetlist, logfolder,tmpfolder, md5opts=None):
 			foundlist = findmounts.findTargetsInMounts(mountlist, infosets['file'])
 
 		timeset={}
-		timeset['premd5'] = datetime.datetime.now()
 
-		if 'justdropmissing' in md5opts['compopts'].keys():
-			masterroute = logfolder+'/md5vali/'+runname+'/master/'
-			if 'useold_md5log' in md5opts['compopts'].keys() and 'logpath' in md5opts['compopts']['useold_md5log'].keys():
-				masterlog=md5opts['compopts']['useold_md5log']['logpath']
+		readname=runopts['compopts']['readname']
+		if 'justdropmissing' in runopts['compopts'].keys():
+			masterroute = logfolder+'/md5vali/'+readname+'/'+runname+'/master/'
+			if 'useold_md5log' in runopts['compopts'].keys() and 'logpath' in runopts['compopts']['useold_md5log'].keys():
+				masterlog=runopts['compopts']['useold_md5log']['logpath']
 			else:
-				masterlog=grabAMasterLog(masterroute,timestr,md5opts['compopts'])
+				masterlog=grabAMasterLog(masterroute,timestr,runopts['compopts'])
 
 			print 'xxx',masterlog
 			masterlogtime = (re.findall(r'-master-(\d+-\d+)\.txt\s*$',masterlog)[0])
@@ -561,20 +606,25 @@ def logAndCompTargets(targetlist, logfolder,tmpfolder, md5opts=None):
 				return
 			return
 
-		tmplogs.clearTmpMD5Logs('md5vali',runname,logfolder)
-		datasets = createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,timeset,md5opts)
 
-		timeset['postmd5'] = datetime.datetime.now()
+		timeset['md5walk'] = {}
+		timeset['md5walk']['start'] = datetime.datetime.now()
+
+		tmplogs.clearTmpMD5Logs('md5vali',runname,logfolder)
+		datasets = createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,timeset,runopts)
+
+		timeset['md5walk']['end'] = datetime.datetime.now()
 
 		if len(datasets.keys()) > 0:
 			datasets['found']=foundlist
 
-			md5SourcesAndTargets(targetlist,runname,infosets,logfolder,tmpfolder,datasets,timeset,md5opts)
+			md5SourcesAndTargets(targetlist,runname,infosets,logfolder,tmpfolder,datasets,timeset,runopts)
 
 
 		tmparr=['pieces', 'sections']
-		tmppath = tmpfolder+'/md5vali/'+runname+'/'+timestr+'/';
-		logpath = logfolder+'/md5vali/'+runname+'/';
+		readname=runopts['compopts']['readname']
+		tmppath = tmpfolder+'/md5vali/'+readname+'/'+runname+'/'+timestr+'/';
+		logpath = logfolder+'/md5vali/'+readname+'/'+runname+'/';
 
 		for tmp in tmparr:
 			l = logpath+tmp
