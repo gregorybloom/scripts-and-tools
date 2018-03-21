@@ -12,3 +12,5 @@ scripts-configs
 scripts-configs/*
 */scripts-configs
 */scripts-configs/*
+
+*.pyc

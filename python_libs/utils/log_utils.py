@@ -236,11 +236,11 @@ def makeMD5Fast( dirpath, targetlog, opts ):
 
 
 def getFileInfo( path ):
-	def shaSum(filename):
+	def shaSum(filename, c=64):
 #	    sha = hashlib.sha256()
 	    sha = hashlib.md5()
 	    with open(filename, 'rb') as f:
-	        for chunk in iter(lambda: f.read(128 * sha.block_size), b''):
+	        for chunk in iter(lambda: f.read(c * 128 * sha.block_size), b''):
 	            sha.update(chunk)
 	    return sha.hexdigest()
 

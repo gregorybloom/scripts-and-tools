@@ -1,7 +1,7 @@
-
 from maintenance_loader import *
 
 import os, sys, hashlib, time, shutil, re
+import datetime
 from sys import version_info
 
 
@@ -235,7 +235,7 @@ def addToTotalCount(optcount,runname,logsetname,compSET):
 
 
 
-def stepCompareLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,useopts=None):
+def stepCompareLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,datasets,useopts=None):
 	if useopts is None:
 		useopts={}
 
@@ -270,7 +270,7 @@ def stepCompareLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,
 	comparefns.addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets)
 	comparefns.checkCompSet(lowest,matches,compSET,steplist,logsetname,datasets)
 	if 'skipmovecheck' not in useopts.keys() or not useopts['skipmovecheck']:
-		comparesearch.searchForMove(runname,logsetname,tmpfolder,compSET,masterlist,datasets,useopts)
+		comparesearch.searchForMove(readname,runname,logsetname,tmpfolder,compSET,masterlist,datasets,useopts)
 
 
 	if 'verbose' in useopts.keys() and useopts['verbose'] == True:
@@ -301,7 +301,7 @@ def stepCompareLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,
 	return {'count':c+1,'lowest':lowest}
 
 
-def compareSourcesAndTargets(runname,timeset,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts=None):
+def compareSourcesAndTargets(runname,readname,timeset,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts=None):
 	if useopts is None:
 		useopts={}
 
@@ -309,9 +309,12 @@ def compareSourcesAndTargets(runname,timeset,masterlog,newmasterlog,timestamp,lo
 	if 'skipmovecheck' not in useopts.keys() or not useopts['skipmovecheck']:
 		timeset['compare']['_parts']['_search'][logsetname] = {}
 		timeset['compare']['_parts']['_search'][logsetname]['start'] = datetime.datetime.now()
-		comparesearch.searchSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts)
-		comparesearch.buildMoveLog(runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts)
+		comparesearch.searchSourcesAndTargets(readname,runname,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts)
+		comparesearch.buildMoveLog(readname,runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts)
 		timeset['compare']['_parts']['_search'][logsetname]['end'] = datetime.datetime.now()
+
+	if logsetname not in timeset['compare']['_parts']['_compare'].keys():
+		timeset['compare']['_parts']['_compare'][logsetname] = {}
 
 	timeset['compare']['_parts']['_compare'][logsetname]['start'] = datetime.datetime.now()
 	steplist={}
@@ -348,7 +351,7 @@ def compareSourcesAndTargets(runname,timeset,masterlog,newmasterlog,timestamp,lo
 	opath=''
 #	print masterlist['_oldmaster']
 	while True:
-		col=stepCompareLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,useopts)
+		col=stepCompareLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,datasets,useopts)
 #		print '| check: ',c,opath,col['lowest']
 #		print '----------------------------------------------'
 		if(opath == col['lowest'] and c>0):

@@ -2,6 +2,7 @@
 from maintenance_loader import *
 
 import os, sys, hashlib, time, shutil, re
+import datetime
 import json
 from sys import version_info
 
@@ -32,7 +33,7 @@ from sys import version_info
 #		print "moved from" for source
 #		print "moved to" for source
 
-def searchSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts=None):
+def searchSourcesAndTargets(readname,runname,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts=None):
 	if useopts is None:
 		useopts={}
 
@@ -55,7 +56,7 @@ def searchSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logset,logs
 
 
 
-	tmppath = tmpfolder+'/md5vali/'+runname+'/'+timestamp+'/miss-search/';
+	tmppath = tmpfolder+'/md5vali/'+readname+'/'+runname+'/'+timestamp+'/miss-search/';
 
 
 	masterlist['_newmaster']={}
@@ -80,7 +81,7 @@ def searchSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logset,logs
 	c=0
 	opath=''
 	while True:
-		col=stepSearchLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,useopts)
+		col=stepSearchLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,datasets,useopts)
 		if(opath == col['lowest'] and c>0):
 			break
 		if(col['lowest'] is None and col['count'] is None):
@@ -103,7 +104,7 @@ def searchSourcesAndTargets(runname,masterlog,newmasterlog,timestamp,logset,logs
 						driveutils.sortLogByPath(masterlist['_newmaster'][sourcename][ftype]['logpath'])
 
 
-def stepSearchLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,useopts=None):
+def stepSearchLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,datasets,useopts=None):
 	if useopts is None:
 		useopts={}
 
@@ -150,7 +151,7 @@ def stepSearchLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,u
 
 
 
-	matchnames = writeMoveOptions(compSET,masterlist['_newmaster'],runname,logsetname,steplist,masterlist,tmpfolder,datasets,useopts)
+	matchnames = writeMoveOptions(compSET,masterlist['_newmaster'],readname,runname,logsetname,steplist,masterlist,tmpfolder,datasets,useopts)
 
 	outputxt = 'precheck # '+str(c)+' ! '+logsetname+', '+lowest+' ! '+compSET["_summary"]['pstate']+', '+compSET["_summary"]['sstate']+', '+str(matchnames)
 	print outputxt
@@ -166,7 +167,7 @@ def stepSearchLogs(c,steplist,masterlist,runname,logsetname,tmpfolder,datasets,u
 
 
 
-def	writeMoveOptions(compSET,newlog,runname,logsetname,steplist,masterlist,tmpfolder,datasets,useopts=None):
+def	writeMoveOptions(compSET,newlog,readname,runname,logsetname,steplist,masterlist,tmpfolder,datasets,useopts=None):
 	if useopts is None:
 		useopts={}
 	if '_holddata' not in useopts.keys():
@@ -189,7 +190,7 @@ def	writeMoveOptions(compSET,newlog,runname,logsetname,steplist,masterlist,tmpfo
 			compSET['_summary']['masterline']=masterline.rstrip()
 
 			for sourcename,sourceobj in compSET['_sources'].iteritems():
-				tmppath = tmpfolder+'/md5vali/'+runname+'/'+timestamp+'/miss-search/';
+				tmppath = tmpfolder+'/md5vali/'+readname+'/'+runname+'/'+timestamp+'/miss-search/';
 
 				if sourceobj['state'] == 'missing':
 
@@ -200,7 +201,7 @@ def	writeMoveOptions(compSET,newlog,runname,logsetname,steplist,masterlist,tmpfo
 
 	elif compSET['_summary']['masterstate'] == 'missing':
 		for sourcename,sourceobj in compSET['_sources'].iteritems():
-			tmppath = tmpfolder+'/md5vali/'+runname+'/'+timestamp+'/miss-search/';
+			tmppath = tmpfolder+'/md5vali/'+readname+'/'+runname+'/'+timestamp+'/miss-search/';
 
 			if sourceobj['state'] == 'new':
 
@@ -260,9 +261,9 @@ def getBestFitPossible(outpath,moveobj,possible_fits):
 	#### IMPROVE THIS LATER
 	return nextarr[0]
 
-def	buildMoveLog(runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts=None):
+def	buildMoveLog(readname,runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts=None):
+	tmppath = tmpfolder+'/md5vali/'+readname+'/'+runname+'/'+timestamp+'/miss-search/';
 
-	tmppath = tmpfolder+'/md5vali/'+runname+'/'+timestamp+'/miss-search/';
 
 	for sourcename,logpath in logset.iteritems():
 		movedpath = tmppath+ 'moved/'+logsetname+'/moved-'+logsetname+'-'+sourcename+'-'+timestamp+'.txt'
@@ -381,10 +382,10 @@ def	buildMoveLog(runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts=
 			driveutils.sortLogByPath(tmppath3+".ext",3)
 
 
-def searchForMove(runname,logsetname,tmpfolder,compSET,masterlist,datasets,useopts=None):
+def searchForMove(readname,runname,logsetname,tmpfolder,compSET,masterlist,datasets,useopts=None):
 
 	timestamp = masterlist['_newmaster']['newtime']
-	tmppath = tmpfolder+'/md5vali/'+runname+'/'+timestamp+'/miss-search/';
+	tmppath = tmpfolder+'/md5vali/'+readname+'/'+runname+'/'+timestamp+'/miss-search/';
 
 	for sourcename in compSET['_sources'].keys():
 		compobj = compSET['_sources'][sourcename]
