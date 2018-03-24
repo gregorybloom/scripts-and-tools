@@ -449,6 +449,9 @@ if [ -e "/tmp/" ]; then
   RUNTMPPATH="/tmp/autobackup/abakup/$RUN_TYPE/$thedate"
   #  fi
 fi
+echo "HOME: ${HOME}"
+echo "RUNTMPPATH: $RUNTMPPATH"
+
 #####################################################################
 
 
@@ -495,7 +498,7 @@ if [ "$HAS_BLOCKID" == true ]; then
   touch "$RUNTMPPATH/unmounted.txt"
   findmounted "$RUNTMPPATH"
 else
-  loadmounts "mounted.txt"
+  loadmounts "$RUNTMPPATH" "mounted.txt"
 fi
 
 SOURCE_FOLDERPATH=false
