@@ -3,12 +3,12 @@ IFS=$'\n'
 
 checklocked() {
   ignore_locks=$1
-  baselogpath="$2"
+  baselockpath="$2"
   lockedrunname="$3"
 
-  if [ -f "$baselogpath/$lockedrunname.lock.txt" ]; then
+  if [ -f "$baselockpath/$lockedrunname.lock.txt" ]; then
     if [ "$ignore_locks" == true ]; then
-      rm -f "$baselogpath/$lockedrunname.lock.txt"
+      rm -f "$baselockpath/$lockedrunname.lock.txt"
       false
     else
       true
@@ -18,25 +18,25 @@ checklocked() {
   fi
 }
 getlocked() {
-  baselogpath="$1"
+  baselockpath="$1"
   lockedrunname="$2"
-  echo "$baselogpath/$lockedrunname.lock.txt"
+  echo "$baselockpath/$lockedrunname.lock.txt"
 }
 setlocked() {
-  baselogpath="$1"
+  baselockpath="$1"
   lockedrunname="$2"
   setlocked="$3"
   time="$4"
   if [ "$setlocked" == true ]; then
-    if [ ! -d "$baselogpath/" ]; then
-      mkdir -p "$baselogpath/"
+    if [ ! -d "$baselockpath/" ]; then
+      mkdir -p "$baselockpath/"
     fi
-    if [ ! -f "$baselogpath/$lockedrunname.lock.txt" ]; then
-      echo "$time" > "$baselogpath/$lockedrunname.lock.txt"
+    if [ ! -f "$baselockpath/$lockedrunname.lock.txt" ]; then
+      echo "$time" > "$baselockpath/$lockedrunname.lock.txt"
     fi
   else
-    if [ -f "$baselogpath/$lockedrunname.lock.txt" ]; then
-      rm -f "$baselogpath/$lockedrunname.lock.txt"
+    if [ -f "$baselockpath/$lockedrunname.lock.txt" ]; then
+      rm -f "$baselockpath/$lockedrunname.lock.txt"
     fi
   fi
 }

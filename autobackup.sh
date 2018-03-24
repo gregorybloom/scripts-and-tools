@@ -290,6 +290,14 @@ scanrsync() {
       echo "-- -- -- $targetdrivepath/$targetpath" >> "$errdump"
     fi
 
+    if [ "$testrun" == true ]; then
+      echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/pre_rsync-$LOGSUFFIX"
+      cat "$tmplog" >> "$RUNLOGPATH/pre_rsync-$LOGSUFFIX"
+    else
+      echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/rsync-$LOGSUFFIX"
+      cat "$tmplog" >> "$RUNLOGPATH/rsync-$LOGSUFFIX"
+    fi
+
     if [ "$?" == "0" ]; then
       echo "Successful rsync."
     else
@@ -342,7 +350,7 @@ mailout() {
   SUBJECT=""
   if [ "$type" == "locked" ]; then
     SUBJECT="autobkup-LOCKED: $thedate1 $RUN_TYPE"
-    echo "LOCKED AT $locktime by $BASELOGPATH/$RUN_TYPE.lock.txt" > "$outfile"
+    echo "LOCKED AT $locktime by $BASELOCKPATH/$RUN_TYPE.lock.txt" > "$outfile"
     echo "$thedate1  =  -" >> "$outfile"
   elif [ "$type" == "pre_error" ]; then
     SUBJECT="autobkup-PRE_ERROR: $thedate1 $RUN_TYPE"
@@ -431,30 +439,33 @@ if ! hasfunct "swaks"; then
 fi
 echo "HAS_SWAKS  $HAS_SWAKS"
 #####################################################################
-BASELOGPATH="${HOME}/log/autobackup/$thedate"
+BASELOCKPATH="${HOME}/log/autobackup/tmp/$RUN_TYPE"
+RUNLOGPATH="${HOME}/log/autobackup/log/$RUN_TYPE"
+RUNTMPPATH="${HOME}/log/autobackup/tmp/$RUN_TYPE"
 if [ -e "/tmp/" ]; then
   #  if [ "$HAS_BLOCKID" == true ]; then
-  BASELOGPATH="/tmp/autobackup/$thedate"
+  BASELOCKPATH="/tmp/autobackup/abakup/$RUN_TYPE/$thedate"
+  RUNLOGPATH="/log/autobackup/abakup/$RUN_TYPE/$thedate"
+  RUNTMPPATH="/tmp/autobackup/abakup/$RUN_TYPE/$thedate"
   #  fi
 fi
 #####################################################################
 
 
-if checklocked "$IGNORE_LOCKS" "$BASELOGPATH" "$RUN_TYPE"; then
-  lockfile=$(getlocked "$BASELOGPATH" "$RUN_TYPE")
+if checklocked "$IGNORE_LOCKS" "$BASELOCKPATH" "$RUN_TYPE"; then
+  lockfile=$(getlocked "$BASELOCKPATH" "$RUN_TYPE")
   locktime=$(cat "$lockfile")
   # send error mail with times of locked file, etc
-  echo "LOCKED AT $locktime by $BASELOGPATH/$RUN_TYPE.lock.txt"
+  echo "LOCKED AT $locktime by $BASELOCKPATH/$RUN_TYPE.lock.txt"
   mailout "locked"
   exit
 fi
 
-setlocked "$BASELOGPATH" "$RUN_TYPE" true "$thedate"
+setlocked "$BASELOCKPATH" "$RUN_TYPE" true "$thedate"
 
 
-RUNLOGPATH="$BASELOGPATH/log/$RUN_TYPE/$RUN_TYPE-$thedate"
-RUNTMPPATH="$BASELOGPATH/tmp/$RUN_TYPE"
-mkdir -p "$RUNLOGPATH/"
+mkdir -p "$RUNLOGPATH"
+mkdir -p "$RUNTMPPATH"
 
 LOGSUFFIX="$RUN_TYPE-$thedate.txt"
 
@@ -636,7 +647,7 @@ rm -f "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
 ##autounmount "$RUNTMPPATH"
 
 
-setlocked "$BASELOGPATH" "$RUN_TYPE" false "$thedate"
+setlocked "$BASELOCKPATH" "$RUN_TYPE" false "$thedate"
 
 echo
 echo "BACKUP RAN SUCCESSFULLY"
@@ -654,8 +665,6 @@ exit 0
 #     backup thurs nights IIF:    no conflicts, or at least "okayed" conflicts
 #     validator pre-run as check?
 
-#  LC_ALL=C find SIDE_DRIVES/-MAC\ BACKUP/Users/greg/MyStuff/_Transfer/_/sortpicture/dragons_crown/ -name '*[! -~]*'
-#  IFS=$'\n'; for i in $(LC_ALL=C find SIDE_DRIVES/-MAC\ BACKUP/Users/greg/MyStuff/_Transfer/_/sortpicture/dragons_crown/ -name '*[! -~]*'); do f="$i"; mv "$i" ${f//[^A-Za-z0-9. \/\(\)_-]/_}; echo "$i"; done
-
+#
 #  https://serverfault.com/questions/348482/how-to-remove-invalid-characters-from-filenames
 #  https://unix.stackexchange.com/questions/109747/identify-files-with-non-ascii-or-non-printable-characters-in-file-name
