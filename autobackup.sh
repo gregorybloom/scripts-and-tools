@@ -495,7 +495,7 @@ if [ "$HAS_BLOCKID" == true ]; then
   touch "$RUNTMPPATH/unmounted.txt"
   findmounted "$RUNTMPPATH"
 else
-  loadmounts "mounted.txt"
+  loadmounts "$RUNTMPPATH" "mounted.txt"
 fi
 
 SOURCE_FOLDERPATH=false
@@ -503,7 +503,7 @@ ERROR_FAIL=false
 verifydriveflags "$RUNTMPPATH"
 findcopypaths
 
-
+# If there was an error mounting/loading
 if [ "$ERROR_FAIL" == true ] || [ "$PRE_ERROR_FAIL" == true ]; then
   thedate2="$(date +'%Y/%m/%d  %H:%M')"
   touch "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
@@ -521,7 +521,7 @@ prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
 if [ "$VALID_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
 
-  pyrun=$(python $SCRIPTDIR/raidcheck.py | tail -n 10)
+  pyrun=$(python $SCRIPTDIR/raidcheck.py | tail -n 20)
   echo "..$pyrun"
 
   vlogpath=false
@@ -530,6 +530,20 @@ if [ "$VALID_CHECK" == true ]; then
       vlogpath=$(echo "$n" | grep -oP "\/.*$")
     fi
   done
+
+  # throw an error 
+  if [ "$vlogpath" == false ]; then
+    PRE_ERROR_FAIL=true
+    ERROR_FAIL=true
+    touch "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+    echo -e "ERROR: FAILURE OCCURRED IN VALIDATOR RUN:  '$vsummary'\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+    echo "$pyrun" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+    echo -e "\n\n------\n\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+    cat "$vsummary" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+
+    echo "--b.2/1-- $m" >> "$ERRDUMP_FILEPATH"
+    echo "$pyrun" >> "$ERRDUMP_FILEPATH"
+  fi
 
   # Back up the validation logs on all possible drive targets
   if [ ! "$vlogpath" == false ]; then

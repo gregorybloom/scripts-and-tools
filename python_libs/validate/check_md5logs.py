@@ -226,10 +226,10 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 					method=[]
 					if 'sigtool' in runopts['walkopts']['method'].keys():
 						if setname in runopts['walkopts']['method']['sigtool']:
-							method.append['sigtool']
+							method.append('sigtool')
 					if 'python' in runopts['walkopts']['method'].keys():
 						if setname in runopts['walkopts']['method']['python']:
-							method.append['python']
+							method.append('python')
 				if len(method) == 0:
 					method=['python']
 
@@ -244,6 +244,15 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 
 					timeset['md5walk']['_parts'][setname][sourcename]['sigtool']['end']=datetime.datetime.now()
 				if 'python' in method:
+					priorCount=None
+					if 'useblocks' in runopts['walkopts'].keys():
+						if '_count' in runopts['walkopts']['useblocks'].keys():
+							priorCount = runopts['walkopts']['useblocks']['_count']
+						if '_all' in runopts['walkopts']['useblocks'].keys():
+							runopts['walkopts']['useblocks']['_count'] = runopts['walkopts']['useblocks']['_all']
+						if setname in runopts['walkopts']['useblocks'].keys():
+							runopts['walkopts']['useblocks']['_count'] = runopts['walkopts']['useblocks'][setname]
+
 					timeset['md5walk']['_parts'][setname][sourcename]['python']={}
 					timeset['md5walk']['_parts'][setname][sourcename]['python']['start']=datetime.datetime.now()
 
@@ -251,6 +260,8 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 
 					timeset['md5walk']['_parts'][setname][sourcename]['python']['end']=datetime.datetime.now()
 
+					if priorCount is not None and 'useblocks' in runopts['walkopts']:
+						runopts['walkopts']['useblocks']['_count'] = priorCount
 
 				if '_errs' in runopts['walkopts'].keys():
 					if '_folders' in runopts['walkopts']['_errs'].keys():
@@ -546,26 +557,35 @@ def beginCompareStage(timeset,logsetlist,readname,runname,masterlogset,tmpfolder
 					s = timeset['md5walk']['_parts'][setname][sourcename][pace]['start']
 					e = timeset['md5walk']['_parts'][setname][sourcename][pace]['end']
 					duration_md5arr.append({'setname':setname,'sourcename':sourcename,'pace':pace,'time':(e-s)})
-	duration_md5arr2 = []
+	duration_md5arr2 = {}
 	if '_parts' in timeset['compare'].keys():
 		for typename,setitem in timeset['compare']['_parts'].iteritems():
+			if typename not in duration_md5arr2.keys():
+				duration_md5arr2[typename] = {'total':None,'list':[]}
 			for setname,setitem2 in timeset['compare']['_parts'][typename].iteritems():
 				s = timeset['compare']['_parts'][typename][setname]['start']
 				e = timeset['compare']['_parts'][typename][setname]['end']
-				duration_md5arr2.append({'typename':typename,'setname':setname,'time':(e-s)})
-
-
+				duration_md5arr2[typename]['list'].append({'typename':typename,'setname':setname,'time':(e-s)})
+				if duration_md5arr2[typename]['total'] is None:
+					duration_md5arr2[typename]['total'] = (e-s)
+				else:
+					duration_md5arr2[typename]['total'] += (e-s)
 
 	print '----------------------------------------------'
 	print "\nMD5 Time: ",str(duration_md5)
 	if (len(duration_md5arr) > 0):
 		for dur in duration_md5arr:
 			print " - MD5 dur stop: "+dur['setname']+","+dur['sourcename']+": "+str(dur['time'])
+#	print '----------------------------------------------'
+#	print "Compare Time: ",str(duration_run)
+#	if (len(duration_md5arr2) > 0):
+#		for dur in duration_md5arr2:
+#			print " - compare dur stop: "+dur['typename']+","+dur['setname']+": "+str(dur['time'])
 	print '----------------------------------------------'
-	print "Compare Time: ",str(duration_run)
-	if (len(duration_md5arr2) > 0):
-		for dur in duration_md5arr2:
-			print " - compare dur stop: "+dur['typename']+","+dur['setname']+": "+str(dur['time'])
+	if '_search' in duration_md5arr2.keys():
+		print "- Search Portion: ",str(duration_md5arr2['_search']['total'])
+	if '_compare' in duration_md5arr2.keys():
+		print "- Compare Portion: ",str(duration_md5arr2['_compare']['total'])
 	print '----------------------------------------------'
 	print "\nMD5 Time: ",str(duration_md5)
 	print "Split Time: ",str(duration_split)
