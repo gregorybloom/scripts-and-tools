@@ -10,13 +10,13 @@ from sys import version_info
 
 def dropMissing(oldmasterlog,missinglist,timestamp,masterroute):
 	if os.path.exists(oldmasterlog+".sorted"):
-		os-remove(oldmasterlog+".sorted")
+		os.remove(oldmasterlog+".sorted")
 	shutil.copyfile(oldmasterlog,oldmasterlog+".sorted")
 	driveutils.sortLogByPath(oldmasterlog+".sorted",3)
 	sortedoldmasterlist = oldmasterlog+".sorted"
 
 	if os.path.exists(missinglist+".sorted"):
-		os-remove(missinglist+".sorted")
+		os.remove(missinglist+".sorted")
 	shutil.copyfile(missinglist,missinglist+".sorted")
 	driveutils.sortLogByPath(missinglist+".sorted",3)
 	sortedmissinglist = missinglist+".sorted"
@@ -36,12 +36,12 @@ def dropMissing(oldmasterlog,missinglist,timestamp,masterroute):
 	newmasterlogfile = open(newmasterlog+".tmp", 'ab')
 
 	driveutils.createNewLog(summarylog+".tmp",True)
+	driveutils.addToLog( "----------- master files dropped -----------\n", summarylog+".tmp" )
 	newsummarylogfile = open(summarylog+".tmp", 'ab')
 
 	driveutils.createNewLog(droppedlog+".tmp",True)
 	newdroppedlogfile = open(droppedlog+".tmp", 'ab')
 
-	driveutils.addToLog( "----------------------------------------------\n", summarylog )
 
 	with open(sortedoldmasterlist) as f:
 	    for rline in f.readlines():
@@ -81,15 +81,16 @@ def dropMissing(oldmasterlog,missinglist,timestamp,masterroute):
 	newsummarylogfile.close()
 	newdroppedlogfile.close()
 
+	driveutils.addToLog( "----------------------------------------------\n", summarylog+".tmp" )
 	driveutils.sortLogByPath(newmasterlog+".tmp")
 	os.rename(newmasterlog+".tmp",newmasterlog)
 	os.rename(summarylog+".tmp",summarylog)
 	os.rename(droppedlog+".tmp",droppedlog)
 
 	if os.path.exists(missinglist+".sorted"):
-		os-remove(missinglist+".sorted")
+		os.remove(missinglist+".sorted")
 	if os.path.exists(oldmasterlog+".sorted"):
-		os-remove(oldmasterlog+".sorted")
+		os.remove(oldmasterlog+".sorted")
 
 
 def logMissedFolders(datasets,summarylog,useopts):
