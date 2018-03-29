@@ -1,7 +1,7 @@
 from maintenance_loader import *
 
 import os, sys, hashlib, time, shutil, re
-import csv
+import csv, datetime
 
 
 
@@ -21,7 +21,14 @@ if len(arglist) == 3:
 	tmpdir=arglist[2]
 
 
+starttime = datetime.datetime.now()
+
 finddupes.buildALogOfDupes(md5log,resultlog,tmpdir)
+
+endtime = datetime.datetime.now()
+
+print "started: ",starttime
+print "duration: ",(endtime-starttime)
 
 #	https://askubuntu.com/questions/380238/how-to-clean-tmp
 #	find /tmp -ctime +10 -exec rm -rf {} +

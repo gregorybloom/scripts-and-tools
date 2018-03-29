@@ -12,6 +12,11 @@ def findDupesInLog(md5log, resultlog, tmpfolder):
 	driveutils.createNewLog(resultlog,False)
 	dupelog = open(resultlog, 'ab')
 
+	md5searchlog = {}
+	md5searchlog['obj'] = open(md5log, 'r')
+	md5searchlog['line'] = md5searchlog['obj'].readline()
+	md5searchlog['decomp'] = driveutils.decomposeFileLog(md5searchlog['line'],1)
+
 	lastmd5 = None
 	with open(md5log) as f:
 	    for rline in f.readlines():
@@ -24,18 +29,22 @@ def findDupesInLog(md5log, resultlog, tmpfolder):
 
 			print rline.rstrip()
 			found=False
-			with open(md5log) as f2:
-			    for rline2 in f2.readlines():
-					if rline == rline2:
-						continue
-					fileobj2 = driveutils.decomposeFileLog(rline2,1)
 
-					if fileobj['sha'] == fileobj2['sha']:
-						if found == False:
-							dupelog.write(rline.rstrip()+"\n")
-							found=True
-						dupelog.write(rline2.rstrip()+"\n")
-						print ' - dupe: ' + rline2.rstrip()
+			while md5searchlog['decomp']['sha'] < fileobj['sha'] and md5searchlog['line'].rstrip() != '':
+				md5searchlog['line'] = md5searchlog['obj'].readline()
+				if md5searchlog['line'].rstrip() != '':
+					md5searchlog['decomp'] = driveutils.decomposeFileLog(md5searchlog['line'],1)
+			while md5searchlog['decomp']['sha'] == fileobj['sha'] and md5searchlog['line'].rstrip() != '':
+				rline2 = md5searchlog['line']
+				if rline.rstrip() != rline2.rstrip():
+					if found == False:
+						dupelog.write(rline.rstrip()+"\n")
+						found=True
+					dupelog.write(rline2.rstrip()+"\n")
+					print ' - dupe: ' + rline2.rstrip()
+				md5searchlog['line'] = md5searchlog['obj'].readline()
+				if md5searchlog['line'].rstrip() != '':
+					md5searchlog['decomp'] = driveutils.decomposeFileLog(md5searchlog['line'],1)
 
 			lastmd5 = fileobj['sha']
 
