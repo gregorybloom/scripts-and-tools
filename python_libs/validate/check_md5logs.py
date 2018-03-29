@@ -597,11 +597,11 @@ def beginCompareStage(timeset,logsetlist,readname,runname,masterlogset,tmpfolder
 	if (len(duration_md5arr) > 0):
 		for dur in duration_md5arr:
 			driveutils.addToLog( " - MD5 dur stop: "+dur['setname']+","+dur['sourcename']+":"+dur['pace']+": "+str(dur['time'])+"\n", summarylog )
-	driveutils.addToLog( "----------------------------------------------\n", summarylog )
-	driveutils.addToLog( "Compare Duration: "+str(duration_run)+"\n", summarylog )
-	if (len(duration_md5arr2) > 0):
-		for dur in duration_md5arr2:
-			driveutils.addToLog( " - compare dur stop: "+dur['typename']+","+dur['setname']+": "+str(dur['time'])+"\n", summarylog )
+#	driveutils.addToLog( "----------------------------------------------\n", summarylog )
+#	driveutils.addToLog( "Compare Duration: "+str(duration_run)+"\n", summarylog )
+#	if (len(duration_md5arr2) > 0):
+#		for key,dur in duration_md5arr2.iteritems():
+#			driveutils.addToLog( " - compare dur stop: "+dur['typename']+","+dur['setname']+": "+str(dur['time'])+"\n", summarylog )
 	driveutils.addToLog( "----------------------------------------------\n", summarylog )
 	driveutils.addToLog( "MD5 Duration: "+str(duration_md5)+"\n", summarylog )
 	driveutils.addToLog( "Split Duration: "+str(duration_split)+"\n", summarylog )
