@@ -4,7 +4,7 @@ IFS=$'\n'
 SCRIPTPATH=`realpath "$0"`
 SCRIPTDIR=`dirname "$SCRIPTPATH"`
 
-OPTS=`getopt -o vh: --long verbose,force,help,email,precheck,vcheck,preponly,verbose,runtype: -n 'parse-options' -- "$@"`
+OPTS=`getopt -o vh: --long verbose,force,help,email,precheck,vcheck,preponly,verbose,sourcescript:,runtype: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
 source "$SCRIPTDIR/config/autobackup_config.sh"
@@ -67,6 +67,7 @@ loadopts() {
 -v | --verbose ) VERBOSE=true; shift ;;
 -h | --help )    HELP=true; shift ;;
 --runtype )   RUN_TYPE="$2"; shift 2 ;;
+--sourcescript )  SOURCE_SCRIPT="$2"; shift 2 ;;
 --force )   IGNORE_LOCKS=true; shift ;;
 --precheck ) PRE_CHECK=true; shift ;;
 --email )   USE_EMAIL=true; shift ;;
@@ -95,6 +96,20 @@ loadrundata() {
     fi
   fi
 }
+sourcematch() {
+  sourcescriptpath="$1"
+  if [[ $SCRIPTPATH == $sourcescriptpath* ]]; then
+    true
+  elif [ ! "$SOURCE_SCRIPT" == false ]; then
+    if [[ $SOURCE_SCRIPT == $sourcescriptpath* ]]; then
+      true
+    else
+      false
+    fi
+  else
+    false
+  fi
+}
 #####################################
 findcopypaths() {
   touch "$RUNTMPPATH/copypaths.txt"
@@ -107,18 +122,20 @@ findcopypaths() {
     driveflag=${vals5[3]}
     backupflags=()
 
-    for k in $(ls -l "$path"); do
-      if echo "$k" | grep -qP "^\-[\w\-\.\+]+\s*\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+(?:\d+\:)?\d+\s+_BACKUPFLAG_\w+_\.txt\s*$"; then
+    if sourcematch "$path"; then
+      for k in $(ls -l "$path"); do
+        if echo "$k" | grep -qP "^\-[\w\-\.\+]+\s*\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+(?:\d+\:)?\d+\s+_BACKUPFLAG_\w+_\.txt\s*$"; then
 
-        # ADD BACKUP FLAGS ONLY IF THEY COME FROM SAME DRIVE AS SCRIPT
-        if [[ $SCRIPTPATH == $path* ]]; then
+          # ADD BACKUP FLAGS ONLY IF THEY COME FROM SAME DRIVE AS SCRIPT
           bkupflag=$(echo "$k" | grep -oP "(?<=\s)_BACKUPFLAG_\w+_(?=\.txt\s*$)")
           if [ -f "$path/$bkupflag.txt" ]; then
             backupflags+=($bkupflag)
           fi
         fi
-      fi
-    done
+      done
+    else
+      echo "$path skipped - is not source from script path: $SCRIPTPATH"
+    fi
 
     for back in ${backupflags[@]}; do
 #      backfile="${backupflags["$back"]}"
@@ -148,7 +165,7 @@ findcopypaths() {
             if [ "$RUN_TYPE" == "$runname" ]; then
               if [ "$driveflag" == "$sourceflag" ]; then
                 SOURCE_FOUND=true
-                if [[ $SCRIPTPATH == $path* ]]; then
+                if sourcematch "$path"; then
                   SOURCE_MATCHES_SELF=true
 
                   for n in $(cat "$RUNTMPPATH/mounted.txt"); do
@@ -236,37 +253,37 @@ scanrsync() {
       if [ "$BACKUP_VERBOSE" == false ]; then
         if [ "$testrun" == false ]; then
           if [ -d "$drivepath/$sourcepath" ]; then
-  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-           rsync -hrltzWPSD --no-links --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+            rsync -hrltzWPSD --no-links --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
           elif [ -f "$drivepath/$sourcepath" ]; then
-  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-           rsync -hrltzWPSD --no-links --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+            rsync -hrltzWPSD --no-links --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
           fi
         else
           if [ -d "$drivepath/$sourcepath" ]; then
-  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-           rsync -hrltzWPSD --no-links --dry-run --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+            rsync -hrltzWPSD --no-links --dry-run --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
           elif [ -f "$drivepath/$sourcepath" ]; then
-  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-           rsync -hrltzWPSD --no-links --dry-run --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+            rsync -hrltzWPSD --no-links --dry-run --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
           fi
         fi
       else
         if [ "$testrun" == false ]; then
           if [ -d "$drivepath/$sourcepath" ]; then
-  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-           rsync -hvvrltzWPSD --no-links --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+            rsync -hvvrltzWPSD --no-links --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
           elif [ -f "$drivepath/$sourcepath" ]; then
-  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-           rsync -hvvrltzWPSD --no-links --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+            rsync -hvvrltzWPSD --no-links --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
           fi
         else
           if [ -d "$drivepath/$sourcepath" ]; then
-  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-           rsync -hvvrltzWPSD --no-links --dry-run --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+            rsync -hvvrltzWPSD --no-links --dry-run --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
           elif [ -f "$drivepath/$sourcepath" ]; then
-  #          echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-           rsync -hvvrltzWPSD --no-links --dry-run --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
+            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+            rsync -hvvrltzWPSD --no-links --dry-run --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
           fi
         fi
       fi
@@ -360,7 +377,7 @@ mailout() {
     cat "$fileone" >> "$outfile"
     if [ "$ERROR_FAIL" == true ]; then
       fileone2="$RUNLOGPATH/log_errs-$LOGSUFFIX"
-      cat "\n==========\n\n" >> "$outfile"
+      echo "\n==========\n\n" >> "$outfile"
       cat "$fileone2" >> "$outfile"
     fi
   elif [ "$type" == "error" ]; then
@@ -413,6 +430,7 @@ mailout() {
 thedate="$(date +'%Y%m%d_T%H%M')"
 thedate1="$(date +'%Y/%m/%d  %H:%M')"
 
+SOURCE_SCRIPT=false
 RUN_TYPE=false
 PRE_CHECK=false
 IGNORE_ERRS=false
@@ -506,7 +524,7 @@ ERROR_FAIL=false
 verifydriveflags "$RUNTMPPATH"
 findcopypaths
 
-
+# If there was an error mounting/loading
 if [ "$ERROR_FAIL" == true ] || [ "$PRE_ERROR_FAIL" == true ]; then
   thedate2="$(date +'%Y/%m/%d  %H:%M')"
   touch "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
@@ -524,7 +542,7 @@ prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
 if [ "$VALID_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
 
-  pyrun=$(python $SCRIPTDIR/raidcheck.py | tail -n 10)
+  pyrun=$(python $SCRIPTDIR/raidcheck.py | tail -n 20)
   echo "..$pyrun"
 
   vlogpath=false
@@ -533,6 +551,20 @@ if [ "$VALID_CHECK" == true ]; then
       vlogpath=$(echo "$n" | grep -oP "\/.*$")
     fi
   done
+
+  # throw an error
+  if [ "$vlogpath" == false ]; then
+    PRE_ERROR_FAIL=true
+    ERROR_FAIL=true
+    touch "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+    echo -e "ERROR: FAILURE OCCURRED IN VALIDATOR RUN:  '$vsummary'\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+    echo "$pyrun" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+    echo -e "\n\n------\n\n" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+    cat "$vsummary" >> "$RUNLOGPATH/prelog_errs-$LOGSUFFIX"
+
+    echo "--b.2/1-- $m" >> "$ERRDUMP_FILEPATH"
+    echo "$pyrun" >> "$ERRDUMP_FILEPATH"
+  fi
 
   # Back up the validation logs on all possible drive targets
   if [ ! "$vlogpath" == false ]; then

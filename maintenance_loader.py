@@ -13,9 +13,9 @@ copydrive = imp.load_source('copydrive', SCRIPTPATH+'/python_libs/mounts/copydri
 findmounts = imp.load_source('findmounts', SCRIPTPATH+'/python_libs/mounts/find_mounts.py')
 backupmounts = imp.load_source('backupmounts', SCRIPTPATH+'/python_libs/mounts/backup_mounts.py')
 
-finddupes = imp.load_source('finddupes', SCRIPTPATH+'/python_libs/find/finddupes.py')
+#finddupes = imp.load_source('finddupes', SCRIPTPATH+'/python_libs/find/finddupes.py')
 findempties = imp.load_source('folderlist', SCRIPTPATH+'/python_libs/find/findempties.py')
-findowndupes = imp.load_source('findowndupes', SCRIPTPATH+'/python_libs/find/findowndupes.py')
+#findowndupes = imp.load_source('findowndupes', SCRIPTPATH+'/python_libs/find/findowndupes.py')
 comparedirs = imp.load_source('comparedirs', SCRIPTPATH+'/python_libs/find/comparedirs.py')
 
 killfromlist = imp.load_source('killfromlist', SCRIPTPATH+'/python_libs/kill/killfromlist.py')
@@ -31,6 +31,7 @@ comparefns = imp.load_source('comparefns', SCRIPTPATH+'/python_libs/validate/com
 comparesearch = imp.load_source('comparesearch', SCRIPTPATH+'/python_libs/validate/compare_search.py')
 comparedata = imp.load_source('comparedata', SCRIPTPATH+'/python_libs/validate/compare_data.py')
 checkmd5s = imp.load_source('checkmd5s', SCRIPTPATH+'/python_libs/validate/check_md5logs.py')
+finddupes = imp.load_source('finddupes', SCRIPTPATH+'/python_libs/validate/find_md5_dupes.py')
 
 comparedupes = imp.load_source('comparedupes', SCRIPTPATH+'/python_libs/duplicates/compare_dupes.py')
 checkdupes = imp.load_source('checkdupes', SCRIPTPATH+'/python_libs/duplicates/check_dupes.py')

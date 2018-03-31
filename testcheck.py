@@ -10,6 +10,15 @@ from Queue import Queue
 from threading import Thread
 
 
+def pythonExamineFile( filepath, opts ):
+	c=1
+	if 'count' in opts.keys():
+		c=opts['count']
+	sum=shaSum(filepath,c)
+	fsize=getSize(filepath)
+	outstr=str(sum)+', '+str(fsize)+', x, '+filepath.rstrip()
+	return outstr
+
 def pythonWalk( dirpath, targetlog, opts ):
 	namefilters=None
 	if 'filters' in opts.keys():
@@ -28,7 +37,7 @@ def pythonWalk( dirpath, targetlog, opts ):
 				fsize=getSize(fullpath)
 				outstr=str(sum)+', '+str(fsize)+', x, '+fullpath.rstrip()
 				outlog.write(outstr+'\n')
-
+	outlog.close()
 def testMD5Fast( dirpath, targetlog, opts ):
 #	https://stackoverflow.com/questions/33152171/why-does-multiprocessing-process-join-hang
 	def md5er(q,log,dir,filters=None):
@@ -164,6 +173,12 @@ def useMethod(method, path, targetlog, opts):
 		return file_len(targetlog)
 	return -1
 
+
+
+opts={}
+opts['filters']={'deny':["garbage"],'allowonly':["imgs","videos","docs","zip","music","misc"]}
+
+
 targetList={}
 targetList['cloudset']='/media/raid/CLOUD_BACKUP'
 targetList['dataset']='/media/raid/Data'
@@ -190,9 +205,47 @@ logname="/tmp/thefuck.txt"
 
 
 
+countlist=[64,96,128,160,192,224,256,288,320,352,384,416,448,480,512,576,640,704,768,832,916,1010]
+filelist=[]
+filelist.append( "/media/raid/Media/Videos/Other/Misc Movies/Antichamber Launch Trailer - January 31st, 2013 on Steam.mp4" )
+filelist.append( "/media/raid/Media/Videos/Anime/-unfinished/[HorribleSubs] 3-gatsu no Lion - 22 [1080p].mkv" )
+filelist.append( "/media/raid/Media/Videos/Anime/-unfinished/[HorribleSubs] JoJo's Bizarre Adventure - Diamond is Unbreakable - 13 [1080p].mkv" )
 
-opts={}
-opts['filters']={'deny':["garbage"],'allowonly':["imgs","videos","docs","zip","music","misc"]}
+driveutils.createNewLog(logname,True)
+outlog = open(logname, 'ab')
+for file in filelist:
+	break
+	for c in countlist:
+		start=datetime.datetime.now()
+		textstr=pythonExamineFile(file,{'count':c})
+		end=datetime.datetime.now()
+		outlog.write(textstr+"\n")
+		print c,(end-start),file
+#		print textstr
+outlog.close()
+#sys.exit(0)
+
+
+countlist=[64,96,128,160,192,224,256,288,320,352]
+countlist=[16,32,64,96,128,160,192,224,256,288,320,352]
+folderlist=[]
+folderlist.append( "/media/raid/Media/Images/OldPhonePictures/" )
+folderlist.append( "/media/raid/Media/Books/RPGs/DnD/" )
+
+#folderlist.append( "/media/raid/Media/Videos/Anime/-unfinished/Boku no Hero Academia/" )
+#folderlist.append( "/media/raid/Media/Videos/Other/Misc Movies/" )
+#folderlist.append( "/media/raid/Media/Videos/Anime/-unfinished/Trinity Seven[DameDesuYo]/" )
+for folder in folderlist:
+	for c in countlist:
+		start=datetime.datetime.now()
+		opts['count']=c
+		pythonWalk(folder,logname,opts)
+		end=datetime.datetime.now()
+		print c,(end-start),folder
+#		print textstr
+sys.exit(0)
+
+
 
 timeset={}
 

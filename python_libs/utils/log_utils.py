@@ -235,7 +235,7 @@ def makeMD5Fast( dirpath, targetlog, opts ):
 		t.join()
 
 
-def getFileInfo( path ):
+def getFileInfo( path, count=None ):
 	def shaSum(filename, c=64):
 #	    sha = hashlib.sha256()
 	    sha = hashlib.md5()
@@ -251,7 +251,10 @@ def getFileInfo( path ):
 		sizeSt = -1
 
 	try:
-		shaSt = shaSum(path)
+		if count is None:
+			shaSt = shaSum(path)
+		else:
+			shaSt = shaSum(path,count)
 	except OSError as exception:
 		shaSt = "*********"
 	except IOError as exception:
@@ -286,10 +289,14 @@ def getFileInfo( path ):
 
 
 
-def logThisFile( fullpath, name, logfile ):
+def logThisFile( fullpath, name, logfile, opts ):
 	fname = fullpath + name
 
-	obj = getFileInfo( fname )
+	if 'useblocks' in opts.keys() and '_count' in opts['useblocks'].keys():
+		obj = getFileInfo( fname, int(opts['useblocks']['_count']) )
+	else:
+		obj = getFileInfo( fname )
+
 
 
 	textout = obj['fulltext']
