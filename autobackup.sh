@@ -250,43 +250,20 @@ scanrsync() {
     if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
       touch "$tmplog"
       echo -e "\n--------- $sourcepath ----------\n"
-      if [ "$BACKUP_VERBOSE" == false ]; then
-        if [ "$testrun" == false ]; then
-          if [ -d "$drivepath/$sourcepath" ]; then
-            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-            rsync -hrltzWPSD --no-links --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-          elif [ -f "$drivepath/$sourcepath" ]; then
-            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-            rsync -hrltzWPSD --no-links --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-          fi
-        else
-          if [ -d "$drivepath/$sourcepath" ]; then
-            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-            rsync -hrltzWPSD --no-links --dry-run --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-          elif [ -f "$drivepath/$sourcepath" ]; then
-            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-            rsync -hrltzWPSD --no-links --dry-run --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-          fi
-        fi
-      else
-        if [ "$testrun" == false ]; then
-          if [ -d "$drivepath/$sourcepath" ]; then
-            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-            rsync -hvvrltzWPSD --no-links --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-          elif [ -f "$drivepath/$sourcepath" ]; then
-            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-            rsync -hvvrltzWPSD --no-links --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-          fi
-        else
-          if [ -d "$drivepath/$sourcepath" ]; then
-            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-            rsync -hvvrltzWPSD --no-links --dry-run --stats --no-compress --delete --delete-after --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-          elif [ -f "$drivepath/$sourcepath" ]; then
-            echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-            rsync -hvvrltzWPSD --no-links --dry-run --stats --no-compress --log-file="$tmplog" "$drivepath/$sourcepath" "$targetdrivepath/$targetpath"
-          fi
-        fi
+      basev="-hrltzWPSD"
+      extend="--no-links --stats --no-compress "
+      if [ -d "$drivepath/$sourcepath" ]; then
+        extend+="--delete --delete-after "
       fi
+      if [ "$testrun" == true ]; then
+        extend+="--dry-run "
+      fi
+      if [ "$BACKUP_VERBOSE" == true ]; then
+        basev+="vv"
+      fi
+      echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+      eval "rsync $basev $extend --log-file='$tmplog' '$drivepath/$sourcepath' '$targetdrivepath/$targetpath'"
+
     elif [ ! -e "$drivepath/$sourcepath" ]; then
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
@@ -463,7 +440,7 @@ RUNTMPPATH="${HOME}/log/autobackup/tmp/$RUN_TYPE"
 if [ -e "/tmp/" ]; then
   #  if [ "$HAS_BLOCKID" == true ]; then
   BASELOCKPATH="/tmp/autobackup/abakup/$RUN_TYPE/$thedate"
-  RUNLOGPATH="/log/autobackup/abakup/$RUN_TYPE/$thedate"
+  RUNLOGPATH="/var/log/autobackup/abakup/$RUN_TYPE/$thedate"
   RUNTMPPATH="/tmp/autobackup/abakup/$RUN_TYPE/$thedate"
   #  fi
 fi
@@ -664,6 +641,7 @@ fi
 ERROR_FAIL=false
 PRE_ERROR_FAIL=false
 scanrsync false "$RUNTMPPATH/copypaths.txt" "$RUNLOGPATH/log_errs-$LOGSUFFIX" "$RUNLOGPATH/log_full-$LOGSUFFIX"
+echo 'all rsync done'
 rm -f "$RUNLOGPATH/log_full-$LOGSUFFIX.tmp"
 
 thedate2="$(date +'%Y/%m/%d  %H:%M')"
