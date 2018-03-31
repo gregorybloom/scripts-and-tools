@@ -1,8 +1,14 @@
+<<<<<<< HEAD
+
+search_log_dupes() {
+  IFS=$'\n';
+=======
 #!/bin/bash
 IFS=$'\n'
 
 search_log_dupes() {
 
+>>>>>>> 88701bb00b9ca6c17bb8890c0e6f6d0c5afe535a
   searchlogpath="$1"
   finallog="$2"
   tmppath="$3"
@@ -31,8 +37,12 @@ search_log_dupes() {
         else
           echo "$resarr" >> "$finallog.tmp";
         fi;
+<<<<<<< HEAD
+    fi
+=======
       fi;
     fi;
+>>>>>>> 88701bb00b9ca6c17bb8890c0e6f6d0c5afe535a
   done;
   sort -u "$finallog.tmp" > "$finallog";
 }

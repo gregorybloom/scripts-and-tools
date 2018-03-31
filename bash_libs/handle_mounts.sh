@@ -24,6 +24,7 @@ loadblockids() {
 loadmounts() {
   runtmppath="$1"
   filename="$2"
+  echo "$runtmppath/$filename"
   for b in $(mount); do
     if echo "$b" | grep -qP "^(?:[A-Z]\:)?[\w\-\/]* on \/[^\s]+ type \w+ \([^\(\)]+\)$"; then
      opath=$(echo "$b" | grep -oP "^(?:(?<=\w\:)|(?<=))[^\s]+(?= on )")

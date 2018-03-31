@@ -444,6 +444,9 @@ if [ -e "/tmp/" ]; then
   RUNTMPPATH="/tmp/autobackup/abakup/$RUN_TYPE/$thedate"
   #  fi
 fi
+echo "HOME: ${HOME}"
+echo "RUNTMPPATH: $RUNTMPPATH"
+
 #####################################################################
 
 
