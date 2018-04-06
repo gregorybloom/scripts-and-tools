@@ -3,27 +3,39 @@ from maintenance_loader import *
 import os, sys, hashlib, time, shutil, re
 import csv, datetime
 
+runopts={}
 
 
 arglist=sys.argv[1:]
 
 if len(arglist) < 2:
 	sys.exit(0)
-if len(arglist) > 3:
-	sys.exit(0)
-
 
 md5log=arglist[0]
 resultlog=arglist[1]
 
-tmpdir=None
-if len(arglist) == 3:
-	tmpdir=arglist[2]
+arglist.pop(0)
+arglist.pop(0)
+
+if len(arglist) > 0:
+	if "tmpdir" in arglist:
+		pt=arglist.index("tmpdir")+1
+		if pt < len(arglist):
+			runopts['tmpdir']=int(arglist[pt])
+	if "skipfirst" in arglist:
+		runopts['skipfirst']=True
+	if "skipthisfirst" in arglist:
+		pt=arglist.index("skipthisfirst")+1
+		if pt < len(arglist):
+			runopts['skipthisfirst']=int(arglist[pt])
+
+
+
 
 
 starttime = datetime.datetime.now()
 
-finddupes.buildALogOfDupes(md5log,resultlog,tmpdir)
+finddupes.buildALogOfDupes(md5log,resultlog,runopts)
 
 endtime = datetime.datetime.now()
 

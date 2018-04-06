@@ -4,7 +4,7 @@ IFS=$'\n'
 SCRIPTPATH=`realpath "$0"`
 SCRIPTDIR=`dirname "$SCRIPTPATH"`
 
-OPTS=`getopt -o vh: --long verbose,force,help,email,precheck,vcheck,preponly,verbose,sourcescript:,runtype: -n 'parse-options' -- "$@"`
+OPTS=`getopt -o vh: --long verbose,force,help,email,dryrun,vcheck,preponly,verbose,sourcescript:,runtype: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
 source "$SCRIPTDIR/config/autobackup_config.sh"
@@ -12,6 +12,8 @@ source "$SCRIPTDIR/bash_libs/scrape_swaks.sh"
 source "$SCRIPTDIR/bash_libs/lock_and_tmp_files.sh"
 source "$SCRIPTDIR/bash_libs/handle_mounts.sh"
 source "$SCRIPTDIR/bash_libs/parse_output.sh"
+
+# https://unix.stackexchange.com/questions/102211/rsync-ignore-owner-group-time-and-perms
 
 #####################################
 # Help function
@@ -69,7 +71,7 @@ loadopts() {
 --runtype )   RUN_TYPE="$2"; shift 2 ;;
 --sourcescript )  SOURCE_SCRIPT="$2"; shift 2 ;;
 --force )   IGNORE_LOCKS=true; shift ;;
---precheck ) PRE_CHECK=true; shift ;;
+--dryrun ) DRY_RUN=true; shift ;;
 --email )   USE_EMAIL=true; shift ;;
 --vcheck )  VALID_CHECK=true; shift ;;
 --preponly )  PREP_ONLY=true; shift ;;
@@ -409,7 +411,7 @@ thedate1="$(date +'%Y/%m/%d  %H:%M')"
 
 SOURCE_SCRIPT=false
 RUN_TYPE=false
-PRE_CHECK=false
+DRY_RUN=false
 IGNORE_ERRS=false
 USE_EMAIL=false
 
@@ -606,13 +608,17 @@ if [ "$VALID_CHECK" == true ]; then
     exit 0
   fi
   if [ -f "$vsummary" ]; then
-    cat "$vsummary" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
-    echo -e "--------------------------\n" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+    summaryout="$RUNLOGPATH/log_summarycheck-$LOGSUFFIX"
+    rm -fv "$summaryout"
+    touch "$summaryout"
+    parsevalidsummary "$vsummary" "$summaryout"
+    echo -e "--------------------------\n" >> "$summaryout"
+    cat "$summaryout" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
   fi
 fi
 
 
-if [ "$PRE_CHECK" == true ]; then
+if [ "$DRY_RUN" == true ]; then
   PRE_ERROR_FAIL=false
   scanrsync true "$RUNTMPPATH/copypaths.txt" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX" "$RUNTMPPATH/rsynclog.txt"
   rm -f "$RUNTMPPATH/rsynclog.txt"

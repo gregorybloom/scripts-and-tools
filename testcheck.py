@@ -207,9 +207,9 @@ logname="/tmp/thefuck.txt"
 
 countlist=[64,96,128,160,192,224,256,288,320,352,384,416,448,480,512,576,640,704,768,832,916,1010]
 filelist=[]
-filelist.append( "/media/raid/Media/Videos/Other/Misc Movies/Antichamber Launch Trailer - January 31st, 2013 on Steam.mp4" )
-filelist.append( "/media/raid/Media/Videos/Anime/-unfinished/[HorribleSubs] 3-gatsu no Lion - 22 [1080p].mkv" )
-filelist.append( "/media/raid/Media/Videos/Anime/-unfinished/[HorribleSubs] JoJo's Bizarre Adventure - Diamond is Unbreakable - 13 [1080p].mkv" )
+#filelist.append( "/media/raid/Media/Videos/Other/Misc Movies/Antichamber Launch Trailer - January 31st, 2013 on Steam.mp4" )
+#filelist.append( "/media/raid/Media/Videos/Anime/-unfinished/[HorribleSubs] 3-gatsu no Lion - 22 [1080p].mkv" )
+#filelist.append( "/media/raid/Media/Videos/Anime/-unfinished/[HorribleSubs] JoJo's Bizarre Adventure - Diamond is Unbreakable - 13 [1080p].mkv" )
 
 driveutils.createNewLog(logname,True)
 outlog = open(logname, 'ab')
@@ -228,9 +228,20 @@ outlog.close()
 
 countlist=[64,96,128,160,192,224,256,288,320,352]
 countlist=[16,32,64,96,128,160,192,224,256,288,320,352]
+countlist=[16,32,64,96,128,160,192,224]
 folderlist=[]
-folderlist.append( "/media/raid/Media/Images/OldPhonePictures/" )
-folderlist.append( "/media/raid/Media/Books/RPGs/DnD/" )
+folderlist.append( "/media/raid/CLOUD_BACKUP/" )
+folderlist.append( "/media/raid/Data/" )
+folderlist.append( "/media/raid/Misc/" )
+folderlist.append( "/media/raid/Projects/" )
+folderlist.append( "/media/raid/SERVER_SCRIPTS/" )
+folderlist.append( "/media/raid/Software/" )
+folderlist.append( "/media/raid/Media/Books/" )
+folderlist.append( "/media/raid/Media/Comics/" )
+folderlist.append( "/media/raid/Media/Images/" )
+folderlist.append( "/media/raid/Media/Music/" )
+folderlist.append( "/media/raid/Media/Recordings/" )
+folderlist.append( "/media/raid/Media/-unsorted/" )
 
 #folderlist.append( "/media/raid/Media/Videos/Anime/-unfinished/Boku no Hero Academia/" )
 #folderlist.append( "/media/raid/Media/Videos/Other/Misc Movies/" )

@@ -108,7 +108,10 @@ runopts['walkopts']={}
 runopts['compopts']={}
 runopts['walkopts']['numthreads']=2
 runopts['walkopts']['useblocks'] = {}
-runopts['walkopts']['useblocks']['_all'] = 64
+runopts['walkopts']['useblocks']['_all'] = 96
+runopts['walkopts']['useblocks']['m_bookset'] = 64
+runopts['walkopts']['useblocks']['projset'] = 160
+runopts['walkopts']['useblocks']['softset'] = 160
 runopts['walkopts']['useblocks']['videoset'] = 160
 #runopts['walkopts']['printon']=10
 

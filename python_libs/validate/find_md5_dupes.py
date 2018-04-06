@@ -5,7 +5,7 @@ import csv, datetime
 
 
 
-def findDupesInLog(md5log, resultlog, tmpfolder):
+def findDupesInLog(md5log, resultlog, tmpfolder, runopts):
 
 	driveutils.sortLogByPath(md5log,0)
 
@@ -38,8 +38,17 @@ def findDupesInLog(md5log, resultlog, tmpfolder):
 				rline2 = md5searchlog['line']
 				if rline.rstrip() != rline2.rstrip():
 					if found == False:
-						dupelog.write(rline.rstrip()+"\n")
-						found=True
+#						if 'skipthisfirst' in runopts.keys():
+#							searchahead = open(md5log, 'r')
+#							searchahead.seek(  md5searchlog['obj'].tell()  )
+#							curline = searchahead.readline()
+#							decomp = driveutils.decomposeFileLog(curline,1)
+
+						elif 'skipfirst' in runopts.keys():
+							found=True
+						else:
+							dupelog.write(rline.rstrip()+"\n")
+							found=True
 					dupelog.write(rline2.rstrip()+"\n")
 					print ' - dupe: ' + rline2.rstrip()
 				md5searchlog['line'] = md5searchlog['obj'].readline()
@@ -52,10 +61,13 @@ def findDupesInLog(md5log, resultlog, tmpfolder):
 	driveutils.sortLogByPath(resultlog,0)
 
 
-def buildALogOfDupes(md5log, resultlog, tmpdir=None):
+def buildALogOfDupes(md5log, resultlog, runopts=None):
 	timestr = time.strftime("%Y%m%d-%H%M%S")
 
-	if tmpdir is None:
+	tmpdir = ''
+	if 'tmpdir' not in runopts.keys():
 		tmpdir = "/tmp/"
+	else:
+		tmpdir = runopts['tmpdir']
 	tmpdir += "/find_dupes/"+timestr+"/"
-	findDupesInLog(md5log, resultlog, tmpdir)
+	findDupesInLog(md5log, resultlog, tmpdir, runopts)

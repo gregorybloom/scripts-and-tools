@@ -14,6 +14,19 @@ greprsynclines() {
   drek=()
   ##
 }
+parsevalidsummary() {
+  parsefile="$1"
+  targetfile="$2"
+  if grep -qP "-------------totals----------" "$parsefile"; then
+    for g in $(grep -P "-------------totals----------" "$parsefile"); do
+      nv=$(grep -nP "-------------totals----------" "$parsefile")
+      nval=$(echo "$nv" | grep -oP "^\d+(?=\:)")
+
+      tail "-n+$nval" "$parsefile" >> "$targetfile"
+      break
+    done
+  fi
+}
 parsersync() {
   parsefile="$1"
   targetfile="$2"
