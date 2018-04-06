@@ -252,7 +252,7 @@ scanrsync() {
     if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
       touch "$tmplog"
       echo -e "\n--------- $sourcepath ----------\n"
-      basev="-hrltzWPSD"
+      basev="-hrltzOWPSD"
       extend="--no-links --stats --no-compress "
       if [ -d "$drivepath/$sourcepath" ]; then
         extend+="--delete --delete-after "
