@@ -1,8 +1,13 @@
 #!/bin/bash
+export PATH=$PATH:/sbin
+
 IFS=$'\n'
 
 SCRIPTPATH=`realpath "$0"`
 SCRIPTDIR=`dirname "$SCRIPTPATH"`
+
+echo "Running: $SCRIPTPATH"
+echo "Running: $SCRIPTPATH" | wall
 
 OPTS=`getopt -o vh: --long verbose,force,help,email,dryrun,vcheck,preponly,verbose,sourcescript:,runtype: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
@@ -265,6 +270,7 @@ scanrsync() {
       fi
       echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
       eval "rsync $basev $extend --log-file='$tmplog' '$drivepath/$sourcepath' '$targetdrivepath/$targetpath'"
+      echo "rsync completed."
 
     elif [ ! -e "$drivepath/$sourcepath" ]; then
       LOOP_ERROR_FAIL=true
@@ -345,6 +351,7 @@ mailout() {
   rm -f "$outfile"
   SUBJECT=""
   if [ "$type" == "locked" ]; then
+    mkdir -p "$RUNLOGPATH"
     SUBJECT="autobkup-LOCKED: $thedate1 $RUN_TYPE"
     echo "LOCKED AT $locktime by $BASELOCKPATH/$RUN_TYPE.lock.txt" > "$outfile"
     echo "$thedate1  =  -" >> "$outfile"
@@ -441,13 +448,15 @@ RUNLOGPATH="${HOME}/log/autobackup/log/$RUN_TYPE"
 RUNTMPPATH="${HOME}/log/autobackup/tmp/$RUN_TYPE"
 if [ -e "/tmp/" ]; then
   #  if [ "$HAS_BLOCKID" == true ]; then
-  BASELOCKPATH="/tmp/autobackup/abakup/$RUN_TYPE/$thedate"
+  BASELOCKPATH="/tmp/autobackup/abakup/$RUN_TYPE/"
   RUNLOGPATH="/var/log/autobackup/abakup/$RUN_TYPE/$thedate"
   RUNTMPPATH="/tmp/autobackup/abakup/$RUN_TYPE/$thedate"
   #  fi
 fi
 echo "HOME: ${HOME}"
 echo "RUNTMPPATH: $RUNTMPPATH"
+
+LOGSUFFIX="$RUN_TYPE-$thedate.txt"
 
 #####################################################################
 
@@ -467,7 +476,6 @@ setlocked "$BASELOCKPATH" "$RUN_TYPE" true "$thedate"
 mkdir -p "$RUNLOGPATH"
 mkdir -p "$RUNTMPPATH"
 
-LOGSUFFIX="$RUN_TYPE-$thedate.txt"
 
 
 rebuildtmpfiles "$RUNTMPPATH"
@@ -687,3 +695,6 @@ exit 0
 #
 #  https://serverfault.com/questions/348482/how-to-remove-invalid-characters-from-filenames
 #  https://unix.stackexchange.com/questions/109747/identify-files-with-non-ascii-or-non-printable-characters-in-file-name
+
+#  sudo /etc/init.d/cron restart
+#

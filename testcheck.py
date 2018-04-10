@@ -230,18 +230,20 @@ countlist=[64,96,128,160,192,224,256,288,320,352]
 countlist=[16,32,64,96,128,160,192,224,256,288,320,352]
 countlist=[16,32,64,96,128,160,192,224]
 folderlist=[]
-folderlist.append( "/media/raid/CLOUD_BACKUP/" )
-folderlist.append( "/media/raid/Data/" )
-folderlist.append( "/media/raid/Misc/" )
-folderlist.append( "/media/raid/Projects/" )
-folderlist.append( "/media/raid/SERVER_SCRIPTS/" )
-folderlist.append( "/media/raid/Software/" )
-folderlist.append( "/media/raid/Media/Books/" )
+#folderlist.append( "/media/raid/CLOUD_BACKUP/" )
+#folderlist.append( "/media/raid/Data/" )
+#folderlist.append( "/media/raid/Misc/" )
+#folderlist.append( "/media/raid/Projects/" )
+#folderlist.append( "/media/raid/SERVER_SCRIPTS/" )
+#folderlist.append( "/media/raid/Software/" )
+#folderlist.append( "/media/raid/Media/Books/" )
 folderlist.append( "/media/raid/Media/Comics/" )
 folderlist.append( "/media/raid/Media/Images/" )
 folderlist.append( "/media/raid/Media/Music/" )
 folderlist.append( "/media/raid/Media/Recordings/" )
 folderlist.append( "/media/raid/Media/-unsorted/" )
+folderlist.append( "/media/raid/SIDE_DRIVES/" )
+folderlist.append( "/media/raid/Media/Videos/" )
 
 #folderlist.append( "/media/raid/Media/Videos/Anime/-unfinished/Boku no Hero Academia/" )
 #folderlist.append( "/media/raid/Media/Videos/Other/Misc Movies/" )
