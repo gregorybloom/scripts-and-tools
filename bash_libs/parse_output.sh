@@ -31,34 +31,42 @@ parsersync() {
   parsefile="$1"
   targetfile="$2"
 
-  if grep -qP "^$prefregstr\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile"; then
-    for g in $(grep -P "^$prefregstr\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile"); do
-      nv=$(grep -nP "^$prefregstr\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile")
+  PRESUFF="(?:[\w\:\s\/]+\[\d+\]\s+)?"
+  if grep -qP "^$PRESUFF\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile"; then
+    echo "parsing 'a'"
+    grep -P "^$PRESUFF\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile" > "$parsefile.2"
+    for g in $(cat "$parsefile.2"); do
+      nv=$(grep -nP "^$PRESUFF\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile")
       nval=$(echo "$nv" | grep -oP "^\d+(?=\:)")
-      nv2=$(grep -nP "^$prefregstr\s*Number of files\:\s*[\d\.\,]+\s*\(reg\:\s*[\d\.\,]+,\s*dir\:\s*[\d\.\,]+\)\s*$" "$parsefile")
+      nv2=$(grep -nP "^$PRESUFF\s*Number of files\:\s*[\d\.\,]+\s*\(reg\:\s*[\d\.\,]+,\s*dir\:\s*[\d\.\,]+\)\s*$" "$parsefile")
       nval2=$(echo "$nv2" | grep -oP "^\d+(?=\:)")
 
-      if [ -e "$parsefile.2" ]; then
-        rm -f "$parsefile.2"
-      fi
-      tail "-n+$nval" "$parsefile"| head -n 1 >> "$parsefile.2"
-      tail "-n+$nval2" "$parsefile" >> "$parsefile.2"
+      rm -f "$parsefile.3"
+      tail "-n+$nval" "$parsefile"| head -n 1 >> "$parsefile.3"
+      tail "-n+$nval2" "$parsefile" >> "$parsefile.3"
 
-      for h in $(cat "$parsefile.2"); do
+      for h in $(cat "$parsefile.3"); do
         if echo "$h" | grep -qP "^\d+(?:\/\d+)+\s+\d+(?:\:\d+)+\s+\[\d+\]\s+(?:[Tt]otal|Number of|Literal data|Matched data|sent)"; then
           tmpline=$(echo "$h" | sed -e 's/^[[:digit:]]*\/[[:digit:]]*\/[[:digit:]]*[[:space:]][[:digit:]]*\:[[:digit:]]*\:[[:digit:]]*[[:space:]]\[[[:digit:]]*\][[:space:]]//g')
           echo "$tmpline" >> "$targetfile"
         fi
       done
-      rm -f "$parsefile.2"
+      rm -f "$parsefile.3"
     done
-  elif grep -qP "^$prefregstr\s*Number of files\:\s+[\d\.\,]+\s+\(reg\:\s+[\d\.\,]+\,\s+dir\:\s+[\d\.\,]+\)" "$parsefile"; then
-    for h in $(cat "$parsefile"); do
+    rm -f "$parsefile.2"
+  elif grep -qP "^$PRESUFF\s*Number of files\:\s+[\d\.\,]+\s+\(reg\:\s+[\d\.\,]+\,\s+dir\:\s+[\d\.\,]+\)" "$parsefile"; then
+    echo "parsing 'b'"
+    nv2=$(grep -nP "^$PRESUFF\s*Number of files\:\s*[\d\.\,]+\s*\(reg\:\s*[\d\.\,]+,\s*dir\:\s*[\d\.\,]+\)\s*$" "$parsefile")
+    nval2=$(echo "$nv2" | grep -oP "^\d+(?=\:)")
+
+    tail "-n+$nval2" "$parsefile" >> "$parsefile.2"
+    for h in $(cat "$parsefile.2"); do
       if echo "$h" | grep -qP "^\d+(?:\/\d+)+\s+\d+(?:\:\d+)+\s+\[\d+\]\s+(?:[Tt]otal|Number of|Literal data|Matched data|sent)"; then
         tmpline=$(echo "$h" | sed -e 's/^[[:digit:]]*\/[[:digit:]]*\/[[:digit:]]*[[:space:]][[:digit:]]*\:[[:digit:]]*\:[[:digit:]]*[[:space:]]\[[[:digit:]]*\][[:space:]]//g')
         echo "$tmpline" >> "$targetfile"
       fi
     done
+    rm -f "$parsefile.2"
   fi
 }
 
@@ -154,15 +162,16 @@ getrsyncerrcode() {
 
 
 grepRSyncFailure() {
-  prefregstr="$1"
-  thetmpfile="$2"
-  logresult="$3"
-  if grep -qP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$thetmpfile"; then
-    grep -nP "^$prefregstr\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$thetmpfile" >> "$logresult"
+#  prefregstr="$1"
+  thetmpfile="$1"
+  logresult="$2"
+  PRESUFF="(?:[\w\:\s\/]+\[\d+\]\s+)?"
+  if grep -qP "^$PRESUFF\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$thetmpfile"; then
+    grep -nP "^$PRESUFF\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$thetmpfile" >> "$logresult"
     echo "fail_1 "
   fi
-  if grep -qP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$thetmpfile"; then
+  if grep -qP "^$PRESUFF\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$thetmpfile"; then
     echo "fail_2 "
-    grep -nP "^$prefregstr\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$thetmpfile" >> "$logresult"
+    grep -nP "^$PRESUFF\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$thetmpfile" >> "$logresult"
   fi
 }

@@ -3,6 +3,7 @@ export PATH=$PATH:/sbin
 
 IFS=$'\n'
 
+
 SCRIPTPATH=`realpath "$0"`
 SCRIPTDIR=`dirname "$SCRIPTPATH"`
 
@@ -11,6 +12,7 @@ echo "Running: $SCRIPTPATH" | wall
 
 OPTS=`getopt -o vh: --long verbose,force,help,email,dryrun,vcheck,preponly,verbose,sourcescript:,runtype: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
+
 
 source "$SCRIPTDIR/config/autobackup_config.sh"
 source "$SCRIPTDIR/bash_libs/scrape_swaks.sh"
@@ -313,16 +315,14 @@ scanrsync() {
       echo "-- -- -- $? : $errlabel : $sourcepath" >> "$errdump"
     fi
 
-#    parseresult=$(grepRSyncFailure "$prefregstr" "$tmplog" "$tmperrfile.tmp")
-    parseresult=$(grepRSyncFailure "$tmplog" "$tmperrfile.tmp")
+    parseresult=$(grepRSyncFailure "$prefregstr" "$tmplog" "$tmperrfile.tmp")
     if echo "$parseresult" | grep -qP "fail_\d+"; then
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
 
       echo "--$errdumpltr/4-- $sourcepath : $j" >> "$errdump"
-#      grepRSyncFailure "$prefregstr" "$tmplog" "$errdump"
-      grepRSyncFailure "$tmplog" "$errdump"
+      grepRSyncFailure "$prefregstr" "$tmplog" "$errdump"
     fi
     ############### DIFFERS AT THIS POINT
 
@@ -331,11 +331,10 @@ scanrsync() {
       echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_copies-$LOGSUFFIX"
       echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_folders-$LOGSUFFIX"
       echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_matches-$LOGSUFFIX"
-      PRESUFF="(?:[\w\:\s\/]+\[\d+\]\s+)?"
-      grep -P "^$PRESUFF\s*\*?deleting\s+.*" "$tmplog" >> "$RUNLOGPATH/log_deletes-$LOGSUFFIX"
-      grep -P "^$PRESUFF\s*>f\+{9,10}\s+\S.*[^\s\/]\s*$" "$tmplog" >> "$RUNLOGPATH/log_copies-$LOGSUFFIX"
-      grep -P "^$PRESUFF\s*cd\+{9,10}\s+\S.*\/\s*$" "$tmplog" >> "$RUNLOGPATH/log_folders-$LOGSUFFIX"
-#      grep -P "^$PRESUFF\s*\S.*\s+is uptodate\s*$" "$tmplog" >> "$RUNLOGPATH/log_matches-$LOGSUFFIX"
+      grep -P "^$prefregstr\s*deleting\s+.*" "$tmplog" >> "$RUNLOGPATH/log_deletes-$LOGSUFFIX"
+      grep -P "^$prefregstr\s*>f\+{9,10}\s+\S.*[^\s\/]\s*$" "$tmplog" >> "$RUNLOGPATH/log_copies-$LOGSUFFIX"
+      grep -P "^$prefregstr\s*cd\+{9,10}\s+\S.*\/\s*$" "$tmplog" >> "$RUNLOGPATH/log_folders-$LOGSUFFIX"
+      grep -P "^$prefregstr\s*\S.*\s+is uptodate\s*$" "$tmplog" >> "$RUNLOGPATH/log_matches-$LOGSUFFIX"
 
       echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
       parsersync "$tmplog" "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
@@ -414,7 +413,6 @@ mailout() {
 }
 
 
-
 #####################################################################
 thedate="$(date +'%Y%m%d_T%H%M')"
 thedate1="$(date +'%Y/%m/%d  %H:%M')"
@@ -427,7 +425,9 @@ USE_EMAIL=false
 
 
 loadopts
+
 loadrundata
+
 #####################################################################
 HAS_BLOCKID=true
 HAS_MAIL=true
@@ -514,6 +514,9 @@ ERROR_FAIL=false
 verifydriveflags "$RUNTMPPATH"
 findcopypaths
 
+
+
+
 # If there was an error mounting/loading
 if [ "$ERROR_FAIL" == true ] || [ "$PRE_ERROR_FAIL" == true ]; then
   thedate2="$(date +'%Y/%m/%d  %H:%M')"
@@ -528,7 +531,7 @@ mkdir -p "$ERRDUMP_FOLDERPATH"
 echo "errdump: $ERRDUMP_FILEPATH"
 echo "logpath: $RUNLOGPATH"
 
-#prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
+prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
 if [ "$VALID_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
 
@@ -573,8 +576,7 @@ if [ "$VALID_CHECK" == true ]; then
       touch "$tmpfile.2"
       rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile.2" "$vbaselog" "$targetdrivepath/logs/"
 
-#      parseresult=$(grepRSyncFailure "$prefregstr" "$tmpfile.2" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX")
-      parseresult=$(grepRSyncFailure "$tmpfile.2" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX")
+      parseresult=$(grepRSyncFailure "$prefregstr" "$tmpfile.2" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX")
       if echo "$parseresult" | grep -qP "fail_\d+"; then
         PRE_ERROR_FAIL=true
         ERROR_FAIL=true
@@ -584,8 +586,7 @@ if [ "$VALID_CHECK" == true ]; then
         if echo "$parseresult" | grep -qP "fail_2"; then
           echo "--a/2-- $vbaselog,$p" >> "$ERRDUMP_FILEPATH"
         fi
-#        grepRSyncFailure "$prefregstr" "$tmpfile.2" "$ERRDUMP_FILEPATH"
-        grepRSyncFailure "$tmpfile.2" "$ERRDUMP_FILEPATH"
+        grepRSyncFailure "$prefregstr" "$tmpfile.2" "$ERRDUMP_FILEPATH"
       fi
       rm -f "$tmpfile.2"
     done
@@ -685,21 +686,4 @@ echo
 echo "BACKUP RAN SUCCESSFULLY"
 exit 0
 
-
-
-# catch notifications/errors
-#                 - note: high overwrite arate!  > 40%
-#                 - err: no md5 matches
-
-# launch validator beforehand?
-# run if conflicts occur? what about edited files???
-#     run validator tuesday nights?
-#     backup thurs nights IIF:    no conflicts, or at least "okayed" conflicts
-#     validator pre-run as check?
-
-#
-#  https://serverfault.com/questions/348482/how-to-remove-invalid-characters-from-filenames
-#  https://unix.stackexchange.com/questions/109747/identify-files-with-non-ascii-or-non-printable-characters-in-file-name
-
-#  rm -f /tmp/cronlog.txt; /media/raid/SERVER_SCRIPTS/scripts-and-tools/autobackup.sh --runtype=manuraid --email --vcheck >> /tmp/cronlog.txt 2>&1
-#  sudo /etc/init.d/cron restart
+# ########    autobackup 2 test bullcrap ########
