@@ -231,6 +231,8 @@ scanrsync() {
   tmperrfile="$3"                 # $RUNLOGPATH/prelog_errs-$LOGSUFFIX
   tmplog="$4"                     # $RUNTMPPATH/rsynclog.txt
   errdump="$ERRDUMP_FILEPATH"        # $ERRDUMP_FILEPATH
+
+  rcount=-1
   for j in $(cat "$pathsfile"); do
     IFS=',' read -ra vals8 <<< "$j"    #Convert string to array
 
@@ -246,6 +248,7 @@ scanrsync() {
     mkdir -p "$targetdrivepath/$targetpath"
     LOOP_ERROR_FAIL=false
 
+    rcount=$((rcount+1))
     if [ "$testrun" == true ]; then
       errdumpltr="c"
     else
@@ -257,7 +260,9 @@ scanrsync() {
     if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
       touch "$tmplog"
       echo -e "\n--------- $sourcepath ----------\n"
-      basev="-hrltzOWPSD"
+#     c, D, z
+#      basev="-hrltzOWPSD"
+      basev="-hrtzOWSD"
       extend="--no-links --stats --no-compress "
       if [ -d "$drivepath/$sourcepath" ]; then
         extend+="--delete --delete-after "
@@ -323,6 +328,7 @@ scanrsync() {
       echo "--$errdumpltr/4-- $sourcepath : $j" >> "$errdump"
 #      grepRSyncFailure "$prefregstr" "$tmplog" "$errdump"
       grepRSyncFailure "$tmplog" "$errdump"
+      echo "Errors detected."
     fi
     ############### DIFFERS AT THIS POINT
 
@@ -342,6 +348,9 @@ scanrsync() {
     fi
     ###############
 
+    if [ -f "$tmplog" ]; then
+      mv "$tmplog" "$tmplog.$rcount"
+    fi
     if [ "$LOOP_ERROR_FAIL" == true ]; then
       cat "$tmperrfile.tmp" >> "$tmperrfile"
     fi

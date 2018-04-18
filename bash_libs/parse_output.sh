@@ -168,10 +168,21 @@ grepRSyncFailure() {
   PRESUFF="(?:[\w\:\s\/]+\[\d+\]\s+)?"
   if grep -qP "^$PRESUFF\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$thetmpfile"; then
     grep -nP "^$PRESUFF\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$thetmpfile" >> "$logresult"
-    echo "fail_1 "
+    echo -e "fail_1: permission denied\n"
   fi
   if grep -qP "^$PRESUFF\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$thetmpfile"; then
-    echo "fail_2 "
+    echo -e "fail_2: rsync: operation not permitted\n "
     grep -nP "^$PRESUFF\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$thetmpfile" >> "$logresult"
   fi
+  if grep -qP "^rsync error\: error in file IO \(code 11\)" "$thetmpfile"; then
+    echo -e "fail_3: error in file IO (code 11) (no space left on device?)"
+    grep -nP "^rsync error\: error in file IO \(code 11\)" "$thetmpfile" >> "$logresult"
+  fi
+
+
+#rsync: write failed on "/media/bigdrive1/RAID_BACKUP/SERVER_SCRIPTS/scripts-and-tools/autobackup.sh": No space left on device (28)
+#rsync error: error in file IO (code 11) at receiver.c(393) [receiver=3.1.2]
+
+#rsync error: error in file IO (code 11) at receiver.c(393) [receiver=3.1.2]
+
 }
