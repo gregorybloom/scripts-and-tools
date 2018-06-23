@@ -2,6 +2,7 @@ import imp, os, sys
 
 SCRIPTPATH = os.path.dirname(os.path.realpath(sys.argv[0]))
 
+
 driveutils = imp.load_source('driveutils', SCRIPTPATH+'/python_libs/utils/log_utils.py')
 joinlogs = imp.load_source('joinlogs', SCRIPTPATH+'/python_libs/utils/joinlogs.py')
 tmplogs = imp.load_source('tmplogs', SCRIPTPATH+'/python_libs/tmplogs/tmplogs.py')
@@ -33,5 +34,5 @@ comparedata = imp.load_source('comparedata', SCRIPTPATH+'/python_libs/validate/c
 checkmd5s = imp.load_source('checkmd5s', SCRIPTPATH+'/python_libs/validate/check_md5logs.py')
 finddupes = imp.load_source('finddupes', SCRIPTPATH+'/python_libs/validate/find_md5_dupes.py')
 
-comparedupes = imp.load_source('comparedupes', SCRIPTPATH+'/python_libs/duplicates/compare_dupes.py')
-checkdupes = imp.load_source('checkdupes', SCRIPTPATH+'/python_libs/duplicates/check_dupes.py')
+#comparedupes = imp.load_source('comparedupes', SCRIPTPATH+'/python_libs/duplicates/compare_dupes.py')
+#checkdupes = imp.load_source('checkdupes', SCRIPTPATH+'/python_libs/duplicates/check_dupes.py')

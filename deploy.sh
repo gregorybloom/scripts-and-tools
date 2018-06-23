@@ -11,11 +11,21 @@ deployfolder="$basefolder/deploy"
 
 
 if [ -z "$1" ]; then
+	echo "No deploy folder given."
 	exit 0
 else
 	path="$1"
 fi
-
+if echo "$path" | grep -qP "\/scripts\-and\-tools(?:\/|\s*(?!.))"; then
+		echo "Will not deploy 'scripts-and-tools'."
+		exit 0
+elif echo "$path" | grep -qP "^\/\.\.\/deploy(?:\/|\s*(?!.))"; then
+		echo "Will not deploy the 'deploy' folder."
+		exit 0
+elif echo "$path" | grep -qP "^\/\.\.\/retrieve(?:\/|\s*(?!.))"; then
+		echo "Will not deploy the 'retrieve' folder."
+		exit 0
+fi
 
 source "config/findsshkeypath.sh"
 source "config/grab_server100_info.sh"

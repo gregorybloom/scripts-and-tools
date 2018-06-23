@@ -3,6 +3,11 @@ config/*
 */config
 */config/*
 
+local_config
+local_config/*
+*/local_config
+*/local_config/*
+
 configs
 configs/*
 */configs
@@ -14,3 +19,23 @@ scripts-configs/*
 */scripts-configs/*
 
 *.pyc
+
+launchers
+launchers/*
+*/launchers
+*/launchers/*
+
+external_libs
+external_libs/*
+*/external_libs
+*/external_libs/*
+
+tmp
+tmp/*
+*/tmp
+*/tmp/*
+
+__old
+__old/*
+*/__old
+*/__old/*

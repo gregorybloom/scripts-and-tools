@@ -12,19 +12,19 @@ def dropMissing(oldmasterlog,missinglist,timestamp,masterroute):
 	if os.path.exists(oldmasterlog+".sorted"):
 		os.remove(oldmasterlog+".sorted")
 	shutil.copyfile(oldmasterlog,oldmasterlog+".sorted")
-	driveutils.sortLogByPath(oldmasterlog+".sorted",3)
+	driveutils.sortLogByPath(oldmasterlog+".sorted")
 	sortedoldmasterlist = oldmasterlog+".sorted"
 
 	if os.path.exists(missinglist+".sorted"):
 		os.remove(missinglist+".sorted")
 	shutil.copyfile(missinglist,missinglist+".sorted")
-	driveutils.sortLogByPath(missinglist+".sorted",3)
+	driveutils.sortLogByPath(missinglist+".sorted")
 	sortedmissinglist = missinglist+".sorted"
 
 	md5missinglog = {}
 	md5missinglog['obj'] = open(sortedmissinglist, 'r')
 	md5missinglog['line'] = md5missinglog['obj'].readline()
-	md5missinglog['decomp'] = driveutils.decomposeFileLog(md5missinglog['line'],1)
+	md5missinglog['decomp'] = driveutils.decomposeFileLog(md5missinglog['line'])
 
 	newmasterlogpath = masterroute+'master-'+timestamp+'/'
 
@@ -47,19 +47,19 @@ def dropMissing(oldmasterlog,missinglist,timestamp,masterroute):
 	    for rline in f.readlines():
 			fulltext = rline
 
-			fileobj = driveutils.decomposeFileLog(rline,1)
+			fileobj = driveutils.decomposeFileLog(rline)
 
 			print fulltext.rstrip()
 
 			while md5missinglog['decomp']['fullpath'] < fileobj['fullpath'] and md5missinglog['line'].rstrip() != '':
 				md5missinglog['line'] = md5missinglog['obj'].readline()
 				if md5missinglog['line'].rstrip() != '':
-					md5missinglog['decomp'] = driveutils.decomposeFileLog(md5missinglog['line'],1)
+					md5missinglog['decomp'] = driveutils.decomposeFileLog(md5missinglog['line'])
 
 
 			filematch = False
  			if md5missinglog['line'].rstrip() != '':
-				compareArr = ['sha', 'bytesize', 'fullpath']
+				compareArr = ['sha', 'bytesize', 'fullpath', 'mtype']
 				filematch = True
 				for compitem in compareArr:
 					if compitem not in fileobj.keys() or compitem not in md5missinglog['decomp'].keys():

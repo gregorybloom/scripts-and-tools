@@ -165,8 +165,8 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 						with open(uselog) as f:
 						    for rline in f.readlines():
 								fpath = None
-								groupsA = re.findall(r'^(?:[^,]+,){3}\s*(\/.*?\/\/.*\S)\s*$',rline)
-								groupsB = re.findall(r'^((?:[^,]+,){3})\s*\/.*?\/\/.*\S\s*$',rline)
+								groupsA = re.findall(r'^(?:[^,]+,){3,4}\s*(\/.*?\/\/.*\S)\s*$',rline)
+								groupsB = re.findall(r'^((?:[^,]+,){3,4})\s*\/.*?\/\/.*\S\s*$',rline)
 								fpath = groupsA[0]
 								fdeets = groupsB[0]
 
@@ -240,7 +240,7 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 					timeset['md5walk']['_parts'][setname][sourcename]['sigtool']={}
 					timeset['md5walk']['_parts'][setname][sourcename]['sigtool']['start']=datetime.datetime.now()
 
-					driveutils.makeMD5Fast(targetpath+'/',logname,runopts['walkopts'])
+					driveutils.walkMD5Fast(targetpath+'/',logname,runopts['walkopts'])
 
 					timeset['md5walk']['_parts'][setname][sourcename]['sigtool']['end']=datetime.datetime.now()
 				if 'python' in method:
@@ -323,8 +323,8 @@ def splitMasterLog(masterlog,logfolder,tmpfolder,runname,timestamp,compopts):
 	with open(masterlog) as masterfile:
 	    for rline in masterfile.readlines():
 			fpath = None
-			groupsA = re.findall(r'^(?:[^,]+,){3}\s*(\/.*?\/\/.*\S)\s*$',rline)
-			groupsB = re.findall(r'^((?:[^,]+,){3})\s*\/.*?\/\/.*\S\s*$',rline)
+			groupsA = re.findall(r'^(?:[^,]+,){3,4}\s*(\/.*?\/\/.*\S)\s*$',rline)
+			groupsB = re.findall(r'^((?:[^,]+,){3,4})\s*\/.*?\/\/.*\S\s*$',rline)
 			fpath = groupsA[0]
 			fdeets = groupsB[0]
 

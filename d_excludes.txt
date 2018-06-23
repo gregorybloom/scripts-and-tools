@@ -52,3 +52,8 @@ node_modules/*
 
 branches/*
 */branches/*
+
+local_config/*
+*/local_config/*
+
+

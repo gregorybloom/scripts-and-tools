@@ -55,7 +55,7 @@ if [[ "$path" = "./" ]]; then
 	path=""
 fi
 
-rsync --no-links -e "ssh -p $_SERVER100_PORT -i $sshkey -o PreferredAuthentications=publickey" -avvzcWP --delete --delete-after --port="$_SERVER100_PORT" deploy "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_WEBPATH/sites-available/"
+rsync --no-links -e "ssh -p $_SERVER100_PORT -i $_SSHKEYPATH -o PreferredAuthentications=publickey" -avvzcWP --delete --delete-after --port="$_SERVER100_PORT" deploy "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_WEBPATH/sites-available/"
 
 echo "Log onto the server to move it to $_SERVER100_SITESAVAIL"
 

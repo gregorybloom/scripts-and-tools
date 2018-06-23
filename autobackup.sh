@@ -1,4 +1,5 @@
 #!/bin/bash
+# imports certain functions when running as non-user root
 export PATH=$PATH:/sbin
 
 IFS=$'\n'
@@ -6,10 +7,47 @@ IFS=$'\n'
 SCRIPTPATH=`realpath "$0"`
 SCRIPTDIR=`dirname "$SCRIPTPATH"`
 
-echo "Running: $SCRIPTPATH"
-echo "Running: $SCRIPTPATH" | wall
 
-OPTS=`getopt -o vh: --long verbose,force,help,email,dryrun,vcheck,preponly,verbose,sourcescript:,runtype: -n 'parse-options' -- "$@"`
+hasfunct() {
+  testfn="$1"
+  if [ "$testfn" == "blockid" ]; then
+    $(blkid > /dev/null 2>&1)
+    if [ "$?" -eq 127 ]; then
+      false
+    else
+      true
+    fi
+  elif [ "$testfn" == "mail" ]; then
+    $(mail > /dev/null 2>&1)
+    if [ "$?" -eq 127 ]; then
+      false
+    else
+      true
+    fi
+  elif [ "$testfn" == "wall" ]; then
+    $(wall > /dev/null 2>&1)
+    if [ "$?" -eq 127 ]; then
+      false
+    else
+      true
+    fi
+  elif [ "$testfn" == "swaks" ]; then
+   $(swaks --version > /dev/null 2>&1)
+    if [ "$?" -eq 127 ]; then
+      false
+    else
+      true
+    fi
+  fi
+}
+
+
+echo "Running: $SCRIPTPATH"
+if hasfunct "wall"; then
+  echo "Running: $SCRIPTPATH" | wall
+fi
+
+OPTS=`getopt -o vh: --long verbose,mountonly,force,help,email,dryrun,vcheck,preponly,verbose,sourcescript:,runtype: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
 source "$SCRIPTDIR/config/autobackup_config.sh"
@@ -33,31 +71,6 @@ EndHelp
 }
 ####################################
 
-hasfunct() {
-  testfn="$1"
-  if [ "$testfn" == "blockid" ]; then
-    $(blkid > /dev/null 2>&1)
-    if [ "$?" -eq 127 ]; then
-      false
-    else
-      true
-    fi
-  elif [ "$testfn" == "mail" ]; then
-   $(mail > /dev/null 2>&1)
-   if [ "$?" -eq 127 ]; then
-    false
-  else
-    true
-  fi
-elif [ "$testfn" == "swaks" ]; then
- $(swaks --version > /dev/null 2>&1)
- if [ "$?" -eq 127 ]; then
-  false
-else
-  true
-fi
-fi
-}
 loadopts() {
   echo "$OPTS"
   eval set -- "$OPTS"
@@ -68,6 +81,7 @@ loadopts() {
   PREP_ONLY=false
   IGNORE_LOCKS=false
   BACKUP_VERBOSE=false
+  MOUNT_ONLY=false
 
   while true; do
    case "$1" in
@@ -81,6 +95,7 @@ loadopts() {
 --vcheck )  VALID_CHECK=true; shift ;;
 --preponly )  PREP_ONLY=true; shift ;;
 --verbose )  BACKUP_VERBOSE=true; shift ;;
+--mountonly ) MOUNT_ONLY=true; IGNORE_LOCKS=true; shift ;;
 -- ) shift; break ;;
 * ) break ;;
 esac
@@ -140,8 +155,8 @@ findcopypaths() {
           fi
         fi
       done
-    else
-      echo "$path skipped - is not source from script path: $SCRIPTPATH"
+#    else
+#      echo "$path skipped - is not source from script path: $SCRIPTPATH"
     fi
 
     for back in ${backupflags[@]}; do
@@ -164,6 +179,9 @@ findcopypaths() {
 #	    targetpath=$(echo "$targetpathM")
             targetpath=$(echo "$targetpathM" | sed -e "s/[]//g")
 
+            if [ "$RUN_TYPE" != "$runname" ]; then
+              continue
+            fi
 
             DEST_FOUND=false
             SOURCE_FOUND=false
@@ -276,6 +294,7 @@ scanrsync() {
       echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
       eval "rsync $basev $extend --log-file='$tmplog' '$drivepath/$sourcepath' '$targetdrivepath/$targetpath'"
       echo "rsync completed."
+      touch "$tmplog"
 
     elif [ ! -e "$drivepath/$sourcepath" ]; then
       LOOP_ERROR_FAIL=true
@@ -349,10 +368,12 @@ scanrsync() {
     ###############
 
     if [ -f "$tmplog" ]; then
-      mv "$tmplog" "$tmplog.$rcount"
+      cp "$tmplog" "$tmplog.$rcount"
     fi
     if [ "$LOOP_ERROR_FAIL" == true ]; then
-      cat "$tmperrfile.tmp" >> "$tmperrfile"
+      if [ -f "$tmperrfile.tmp" ]; then
+        cat "$tmperrfile.tmp" >> "$tmperrfile"
+      fi
     fi
     rm -f "$tmperrfile.tmp"
   done
@@ -518,6 +539,15 @@ else
   loadmounts "$RUNTMPPATH" "mounted.txt"
 fi
 
+if [ "$MOUNT_ONLY" == true ]; then
+  if [ "$HAS_BLOCKID" == true ]; then
+    exit 0;
+  else
+    echo "FAILURE TO RUN AUTOMOUNTING; NO BLOCKID COMMAND FOUND"
+    exit 0;
+  fi
+fi
+
 SOURCE_FOLDERPATH=false
 ERROR_FAIL=false
 verifydriveflags "$RUNTMPPATH"
@@ -579,11 +609,11 @@ if [ "$VALID_CHECK" == true ]; then
       targetdrivepath="$p"
 
       mkdir -p "$targetdrivepath/logs/"
-      touch "$tmpfile.2"
-      rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile.2" "$vbaselog" "$targetdrivepath/logs/"
+      touch "$tmpfile.x2"
+      rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile.x2" "$vbaselog" "$targetdrivepath/logs/"
 
 #      parseresult=$(grepRSyncFailure "$prefregstr" "$tmpfile.2" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX")
-      parseresult=$(grepRSyncFailure "$tmpfile.2" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX")
+      parseresult=$(grepRSyncFailure "$tmpfile.x2" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX")
       if echo "$parseresult" | grep -qP "fail_\d+"; then
         PRE_ERROR_FAIL=true
         ERROR_FAIL=true
@@ -594,9 +624,9 @@ if [ "$VALID_CHECK" == true ]; then
           echo "--a/2-- $vbaselog,$p" >> "$ERRDUMP_FILEPATH"
         fi
 #        grepRSyncFailure "$prefregstr" "$tmpfile.2" "$ERRDUMP_FILEPATH"
-        grepRSyncFailure "$tmpfile.2" "$ERRDUMP_FILEPATH"
+        grepRSyncFailure "$tmpfile.x2" "$ERRDUMP_FILEPATH"
       fi
-      rm -f "$tmpfile.2"
+      rm -f "$tmpfile.x2"
     done
   fi
 

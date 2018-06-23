@@ -13,24 +13,7 @@ ix = 0
 gc = 0
 
 
-def beginMD5Walk(path,logname,walkopts=None):
-	def md5er(q,type,log,dir,walkopts,filters=None):
-		while True:
-			fname=q.get()
-			if fname is None:
-				break
-			if type=='normlog':
-				basepath = re.findall(r'^(.*\/)[^\/]+$',fname)[0]
-				namestr = re.findall(r'^.*\/([^\/]+\S)\s*$',fname)[0]
-				driveutils.logThisFile( basepath, namestr, logname, walkopts )
-			elif type=='subproc':
-				proc = subprocess.Popen(["/usr/bin/sigtool", "--md5", fname],stdout=subprocess.PIPE)
-				(out, err) = proc.communicate()
-				logfile = open(log, "a+", -1)
-				logfile.write(', '.join(out.split(':')[0:2])+', x, '+fname+"\n")
-				logfile.close()
-				proc.wait()
-			q.task_done()
+def beginMD5Walk(dirpath,logname,walkopts=None):
 
 	global gc
 	gc=0
@@ -42,66 +25,11 @@ def beginMD5Walk(path,logname,walkopts=None):
 		namefilters=walkopts['filters']
 
 	driveutils.createNewLog(logname,False)
-	if 'threadprocess' in walkopts.keys():
 
-		num_threads=2
-		if 'numthreads' in walkopts.keys():
-			num_threads=walkopts['numthreads']
-
-		filequeue=Queue()
-		threads=[]
-
-
-		for i in range(num_threads):
-			worker = Thread(target=md5er, args=(filequeue,'normlog',logname,path,walkopts,namefilters))
-			worker.setDaemon(True)
-			threads.append(worker)
-			worker.start()
-
-		for folder,subs,files in os.walk(path):
-			for filename in files:
-
-				fullpath=os.path.join(folder,filename)
-				folderpath=re.findall('^(.*\/)[^\/]+\s*$',fullpath)[0]
-				if (namefilters is None) or (not driveutils.ignoreFile(filename,folderpath,fullpath,namefilters)):
-					filequeue.put(fullpath)
-		filequeue.join()
-
-		for i in range(num_threads):
-		    filequeue.put(None)
-		for t in threads:
-			t.join()
-
-	elif 'quickprocess' in walkopts.keys():
-		for folder,subs,files in os.walk(path):
-			for filename in files:
-
-				fullpath=os.path.join(folder,filename)
-				folderpath=re.findall('^(.*\/)[^\/]+\s*$',fullpath)[0]
-				if (namefilters is None) or (not driveutils.ignoreFile(filename,folderpath,fullpath,namefilters)):
-					basepath = re.findall(r'^(.*\/)[^\/]+$',fullpath)[0]
-					namestr = re.findall(r'^.*\/([^\/]+\S)\s*$',fullpath)[0]
-					driveutils.logThisFile( basepath, namestr, logname, walkopts )
-
-	elif 'sigprocess' in walkopts.keys():
-		for folder,subs,files in os.walk(path):
-			for filename in files:
-
-				fullpath=os.path.join(folder,filename)
-				folderpath=re.findall('^(.*\/)[^\/]+\s*$',fullpath)[0]
-				if (namefilters is None) or (not driveutils.ignoreFile(filename,folderpath,fullpath,namefilters)):
-					basepath = re.findall(r'^(.*\/)[^\/]+$',fullpath)[0]
-					namestr = re.findall(r'^.*\/([^\/]+\S)\s*$',fullpath)[0]
-
-					proc = subprocess.Popen(["/usr/bin/sigtool", "--md5", fullpath],stdout=subprocess.PIPE)
-					(out, err) = proc.communicate()
-					logfile = open(logname, "a+", -1)
-					logfile.write(', '.join(out.split(':')[0:2])+', x, '+fullpath+"\n")
-					logfile.close()
-					proc.wait()
-
+	if 'walkmode' not in walkopts.keys():
+		md5Walk(dirpath,'',logname,walkopts)
 	else:
-		md5Walk(path,'',logname,walkopts)
+		walkMD5Fast( dirpath, logname, walkopts )
 
 def md5Walk(base,path,logname,walkopts=None):
 	global ix

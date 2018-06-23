@@ -4,9 +4,6 @@ import os, sys, hashlib, time, shutil, re
 import datetime
 from sys import version_info
 
-
-
-
 def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,useopts=None):
 	if useopts is None:
 		useopts={}
@@ -20,7 +17,7 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 	masterline = None
 	if compSET['_summary']['masterstate'] != 'missing':
 		if 'line' in compSET['_oldmaster'].keys():
-			relook=re.findall(r'^(\w+,\s*\d+,[^,]+,\s*)\/',compSET['_oldmaster']['line'])
+			relook=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]+,(?:\s*\w[^,]+,)?\s*)\/',compSET['_oldmaster']['line'])
 			if len(relook)>0:
 				masterfiledata = relook[0]
 	if masterfiledata is None:
@@ -38,14 +35,23 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 				sourcename=arrs[c]
 				if sourcename in compSET['_sources'].keys():
 					if 'line' in compSET['_sources'][sourcename].keys():
-						relook=re.findall(r'^(\w+,\s*\d+,[^,]+,\s*)\/',compSET['_sources'][sourcename]['line'])
+						relook=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]+,(?:\s*\w[^,]+,)?\s*)\/',compSET['_sources'][sourcename]['line'])
 						if len(relook)>0:
 							masterfiledata = relook[0]
 				c+=1
 	if masterfiledata is not None:
-		masterline = masterfiledata+masterfilepath+"\n"
-		compSET['_summary']['masterline']=masterline.rstrip()
+		if logsetname in datasets['targets'].keys() and 'source' in datasets['targets'][logsetname].keys():
+			grouppath=datasets['targets'][logsetname]['source']
+		if 'source' in datasets['found'].keys():
+			drivepath=datasets['found']['source']
+		if grouppath is not None and drivepath is not None:
+			basepath=drivepath.rstrip('/')+"/"+grouppath.rstrip('/')+"/"
 
+		basepath=comparefns.grabBasePath(logsetname,'source',datasets)
+		masterend='/masterpath/'+logsetname+'/'+compSET['_summary']['path']
+		newermasterline=comparefns.redoDataFile(masterfiledata+masterend,logsetname,compSET['_summary']['path'],basepath,useopts)
+		compSET['_summary']['masterline']=newermasterline.rstrip()
+		masterline=newermasterline
 
 	# IF ENTRY IS IN OLD MASTER BUT IS NOW GONE FROM ALL SOURCES, ADD TO A 'MISSING' QUICK LIST
 	if compSET['_summary']['masterstate'] != "missing" and masterline is not None:
@@ -126,8 +132,8 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 		for sourcename,sourceobj in compSET['_sources'].iteritems():
 			if sourceobj['state'] == 'missing':
 				if compSET['_summary']['masterstate'] != "missing" and masterline is not None:
-					groups1 = re.findall(r'^(\w+,\s*\d+,\s*[^,]+,\s*)\/masterpath\/.*?\/\/.*?\s*$',masterline.rstrip())
-					groups2 = re.findall(r'^\w+,\s*\d+,\s*[^,]+,\s*\/masterpath\/.*?\/\/(.*?)\s*$',masterline.rstrip())
+					groups1 = re.findall(r'^(\w+,\s*\d+,\s*\w[^,]+,(?:\s*\w[^,]+,)?\s*)\/masterpath\/.*?\/\/.*?\s*$',masterline.rstrip())
+					groups2 = re.findall(r'^\w+,\s*\d+,\s*\w[^,]+,(?:\s*\w[^,]+,)?\s*\/masterpath\/.*?\/\/(.*?)\s*$',masterline.rstrip())
 					templinebody=groups1[0]
 					masterrelativepath=groups2[0]
 					temppath=None
@@ -152,7 +158,11 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 						print sourcename,"- missing, "+sourceobj['line'].rstrip()
 					driveutils.addToLog( sourcename+"- missing, "+sourceobj['line'], logpath )
 			elif sourceobj['state'] == 'moved':
-				newsourcestart=re.findall('^([^\/]+\/.*?\/)\/',sourceobj['line'])[0]
+				if re.match('^([^\/]+\/.*?\/)\/.*',sourceobj['line']):
+					newsourcestart=re.findall('^([^\/]+\/.*?\/)\/',sourceobj['line'])[0]
+				else:
+					newsourcestart=comparefns.grabBasePath(logsetname,sourcename,datasets)
+				newsourcestart=newsourcestart.rstrip('/')+'/'
 
 				movedlogpath=masterlist['_newmaster']['newpath']+'/quicklists/moved-list-'+masterlist['_newmaster']['newtime']+'.txt'
 				driveutils.createNewLog(movedlogpath,True)
@@ -240,13 +250,13 @@ def stepCompareLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,
 		useopts={}
 
 	comparefns.loadStepList(steplist)
-	comparefns.prepStepListVals(steplist)
+	comparefns.prepStepListVals(steplist,logsetname,datasets,useopts)
 
 	comparefns.loadStepList(masterlist)
-	comparefns.prepStepListVals(masterlist)
+	comparefns.prepStepListVals(masterlist,logsetname,datasets,useopts)
 
 	# DEFUNCT?
-	comparefns.pushMasterListToGroup(masterlist,logsetname,useopts)
+	comparefns.pushMasterListToGroup(masterlist,logsetname,datasets,useopts)
 
 
 	matches = {}
@@ -267,7 +277,7 @@ def stepCompareLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,
 
 	compSET = {}
 	comparefns.buildCompSet(lowest,matches,compSET,masterlist)
-	comparefns.addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets)
+	comparefns.addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets,useopts)
 	comparefns.checkCompSet(lowest,matches,compSET,steplist,logsetname,datasets)
 	if 'skipmovecheck' not in useopts.keys() or not useopts['skipmovecheck']:
 		comparesearch.searchForMove(readname,runname,logsetname,tmpfolder,compSET,masterlist,datasets,useopts)
@@ -275,7 +285,7 @@ def stepCompareLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,
 
 	if 'verbose' in useopts.keys() and useopts['verbose'] == True:
 		for i,item in compSET["_sources"].iteritems():
-			print '%',i,item['state'],item['cur_sha'],item['cur_path']
+			print '%',i,item['state'],item['cur_sha'],item['cur_mtype'],item['cur_path']
 
 	comparefns.summarizeCompSet(lowest,matches,compSET,steplist,logsetname,datasets)
 
@@ -310,8 +320,12 @@ def compareSourcesAndTargets(runname,readname,timeset,masterlog,newmasterlog,tim
 		timeset['compare']['_parts']['_search'][logsetname] = {}
 		timeset['compare']['_parts']['_search'][logsetname]['start'] = datetime.datetime.now()
 		comparesearch.searchSourcesAndTargets(readname,runname,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts)
+
+		timeset['compare']['_parts']['_search'][logsetname]['end'] = datetime.datetime.now()
+		######## REMOVE ABOVE LINE
 		comparesearch.buildMoveLog(readname,runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts)
 		timeset['compare']['_parts']['_search'][logsetname]['end'] = datetime.datetime.now()
+
 
 	if logsetname not in timeset['compare']['_parts']['_compare'].keys():
 		timeset['compare']['_parts']['_compare'][logsetname] = {}

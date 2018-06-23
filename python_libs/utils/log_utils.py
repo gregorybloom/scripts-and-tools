@@ -150,7 +150,7 @@ def createNewLog(logname, reuse=False):
 
 
 
-def sortLogByPath(logpath,order=3):
+def sortLogByPath(logpath,order=4):
 	if os.path.exists(logpath+".sorttmp"):
 		return
 	writefile = open(logpath+'.sorttmp', 'wb')
@@ -168,18 +168,47 @@ def sortLogByPath(logpath,order=3):
 
 
 
+def decomposeFileLogItemData(logitemstr):
+	Larray = []
+	if logitemstr.find("|") != -1:
+		Lparts = logitemstr.lstrip().split('|')
+		Larray.extend(Lparts)
+	else:
+		Larray.append(logitemstr)
 
-def decomposeFileLog(logstr, logtype):
+ 	decompobj={}
+	for dataitem in Larray:
+		if logitemstr.find(":") != -1:
+			datapieces = dataitem.lstrip().split(':',1)
+			datakey = datapieces[0]
+			decompobj[datakey] = datapieces[1]
+	return decompobj
+
+def decomposeFileLog(logstr, logtype=1):
 	if (logtype == 1):
-		Lparts = logstr.split(',',3)
-		Lpathparts = Lparts[3].rsplit('/',1)
+		splitlevel = 3
+		if re.match(r'^\w+,\s*\d+,\s*\w[^,]+,\s*\w[^,]+,\s*\/.*$',logstr):
+			splitlevel = 4
+		Lparts = logstr.split(',',splitlevel)
+		Lpathparts = Lparts[splitlevel].rsplit('/',1)
 		Lnameparts = Lpathparts[1].rsplit('.',1)
 
 		Lcompare = {}
 		Lcompare['sha'] = Lparts[0].strip()
 		Lcompare['bytesize'] = Lparts[1].strip()
-		Lcompare['date'] = Lparts[2].strip()
-		Lcompare['fullpath'] = Lparts[3].strip()
+		if splitlevel == 4:
+			Lcompare['itemdatastr'] = Lparts[2].strip()
+			Lcompare['itemdata'] = decomposeFileLogItemData(Lcompare['itemdatastr'])
+		else:
+			Lcompare['itemdatastr'] = 'mtype:md5'
+			Lcompare['itemdata'] = decomposeFileLogItemData(Lcompare['itemdatastr'])
+		if 'mtype' in Lcompare['itemdata'].keys():
+			Lcompare['mtype'] = Lcompare['itemdata']['mtype']
+		else:
+			Lcompare['mtype'] = 'md5'
+
+		Lcompare['date'] = Lparts[(splitlevel-1)].strip()
+		Lcompare['fullpath'] = Lparts[splitlevel].strip()
 		Lcompare['path'] = Lpathparts[0]
 		Lcompare['filename'] = Lpathparts[1]
 		if len(Lnameparts)>1:
@@ -189,60 +218,127 @@ def decomposeFileLog(logstr, logtype):
 		Lcompare['fulltext'] = logstr
 		return Lcompare
 
-def makeMD5Fast( dirpath, targetlog, opts ):
-#	https://stackoverflow.com/questions/33152171/why-does-multiprocessing-process-join-hang
-	def md5er(q,log,dir,filters=None):
-		while True:
+def subprocHash(q,log,file,opts,filters=None):
+	while True:
+		if q is not None:
 			fname=q.get()
-			if fname is None:
-				break
-			proc = subprocess.Popen(["/usr/bin/sigtool", "--md5", fname],stdout=subprocess.PIPE)
+		elif os.path.isfile(file):
+			fname=file
+
+		if fname is None:
+			break
+		fname = fname.replace("//","/")
+#			fname = fname.replace(" ","\ ")
+		print 'subprocess: ',fname
+		try:
+			mtype='md5'
+			if 'mtype' in opts.keys():
+				mtype=opts['mtype']
+
+			if mtype == 'md5':
+				proc = subprocess.Popen(["/usr/bin/sigtool", "--md5", fname],stdout=subprocess.PIPE)
+			elif mtype == 'sha1':
+				proc = subprocess.Popen(["/usr/bin/sigtool", "--sha1", fname],stdout=subprocess.PIPE)
+			elif mtype == 'sha256':
+				proc = subprocess.Popen(["/usr/bin/sigtool", "--sha256", fname],stdout=subprocess.PIPE)
+			else:
+				return
+
 			(out, err) = proc.communicate()
 			logfile = open(log, "a+", -1)
-			logfile.write(', '.join(out.split(':')[0:2])+', x, '+fname+"\n")
+			logfile.write(', '.join(out.split(':')[0:2])+', mtype:'+mtype+', x, '+fname+"\n")
 			logfile.close()
 			proc.wait()
+		except OSError as exception:
+			print ' ** OSERROR: ', fname
+			print ' ** - - ', exception.errno
+#			if exception.errno != errno.EEXIST:
+
+		if q is not None:
 			q.task_done()
+
+
+def walkMD5Fast( dirpath, targetlog, opts ):
+#	https://stackoverflow.com/questions/33152171/why-does-multiprocessing-process-join-hang
 	num_threads=2
 	if 'numthreads' in opts.keys():
 		num_threads=opts['numthreads']
-
-	filequeue=Queue()
-	threads=[]
 
 	namefilters=None
 	if 'filters' in opts.keys():
 		namefilters=opts['filters']
 
-	for i in range(num_threads):
-		worker = Thread(target=md5er, args=(filequeue,targetlog,dirpath,namefilters))
-		worker.setDaemon(True)
-		threads.append(worker)
-		worker.start()
+	filequeue=Queue()
+	threads=[]
 
-	for folder,subs,files in os.walk(dirpath):
-		for filename in files:
+	if 'walkmode' not in opts.keys():
+		return
 
-			fullpath=os.path.join(folder,filename)
-			folderpath=re.findall('^(.*\/)[^\/]+\s*$',fullpath)[0]
-			if (namefilters is None) or (not ignoreFile(filename,folderpath,fullpath,namefilters)):
-				filequeue.put(fullpath)
-	filequeue.join()
+	walkMD5mode = opts['walkmode']
+#	if 'threadprocess' in opts.keys():
+	if walkMD5mode == 'threadprocess':
+		for i in range(num_threads):
+			worker = Thread(target=subprocHash, args=(filequeue,targetlog,dirpath,opts,namefilters))
+			worker.setDaemon(True)
+			threads.append(worker)
+			worker.start()
 
-	for i in range(num_threads):
-	    filequeue.put(None)
-	for t in threads:
-		t.join()
+		for folder,subs,files in os.walk(dirpath):
+			for filename in files:
+
+				fullpath=os.path.join(folder,filename)
+				folderpath=re.findall('^(.*\/)[^\/]+\s*$',fullpath)[0]
+				if (namefilters is None) or (not ignoreFile(filename,folderpath,fullpath,namefilters)):
+					filequeue.put(fullpath)
+		filequeue.join()
+
+		for i in range(num_threads):
+		    filequeue.put(None)
+		for t in threads:
+			t.join()
+	if walkMD5mode == 'quickprocess':
+		for folder,subs,files in os.walk(dirpath):
+			for filename in files:
+
+				fullpath=os.path.join(folder,filename)
+				folderpath=re.findall('^(.*\/)[^\/]+\s*$',fullpath)[0]
+				if (namefilters is None) or (not ignoreFile(filename,folderpath,fullpath,namefilters)):
+					basepath = re.findall(r'^(.*\/)[^\/]+$',fullpath)[0]
+					namestr = re.findall(r'^.*\/([^\/]+\S)\s*$',fullpath)[0]
 
 
-def getFileInfo( path, count=None ):
-	def shaSum(filename, c=64):
-#	    sha = hashlib.sha256()
-	    sha = hashlib.md5()
-	    with open(filename, 'rb') as f:
-	        for chunk in iter(lambda: f.read(c * 128 * sha.block_size), b''):
-	            sha.update(chunk)
-	    return sha.hexdigest()
+					driveutils.logThisFile( basepath, namestr, logname, walkopts )
+	if walkMD5mode == 'sigprocess':
+		for folder,subs,files in os.walk(dirpath):
+			for filename in files:
+
+				fullpath=os.path.join(folder,filename)
+				folderpath=re.findall('^(.*\/)[^\/]+\s*$',fullpath)[0]
+				if (namefilters is None) or (not driveutils.ignoreFile(filename,folderpath,fullpath,namefilters)):
+					basepath = re.findall(r'^(.*\/)[^\/]+$',fullpath)[0]
+					namestr = re.findall(r'^.*\/([^\/]+\S)\s*$',fullpath)[0]
+
+
+					subprocHash(None,logname,fname,walkopts,filters)
+
+
+def shaSum(filename,count=64,style="md5"):
+	if count is None:
+		count=64
+	if style == "md5":
+		sha = hashlib.md5()
+	if style == "sha1":
+		sha = hashlib.sha1()
+	if style == "sha256":
+		sha = hashlib.sha256()
+	with open(filename, 'rb') as f:
+		for chunk in iter(lambda: f.read(count * 128 * sha.block_size), b''):
+			sha.update(chunk)
+	return sha.hexdigest()
+
+def getFileInfo( path, count=None, opts=None ):
+	if opts is None:
+		opts={}
 
 	sizeSt = -1
 	try:
@@ -251,10 +347,14 @@ def getFileInfo( path, count=None ):
 		sizeSt = -1
 
 	try:
+		mtype='md5'
+		if 'mtype' in opts.keys():
+			mtype=opts['mtype']
+
 		if count is None:
-			shaSt = shaSum(path)
+			shaSt = shaSum(path,None,mtype)
 		else:
-			shaSt = shaSum(path,count)
+			shaSt = shaSum(path,count,mtype)
 	except OSError as exception:
 		shaSt = "*********"
 	except IOError as exception:
@@ -267,11 +367,13 @@ def getFileInfo( path, count=None ):
 
 	Lcompare = {}
 
-	textout = shaSt +', '+ str(sizeSt) +', '+ mTime +', '+ path
+	textout = shaSt +', '+ str(sizeSt) +', mtype:'+mtype+', '+ mTime +', '+ path
 	Lcompare['fulltext'] = textout
 
 	Lcompare['sha'] = shaSt
 	Lcompare['bytesize'] = str(sizeSt)
+	Lcompare['itemdatastr'] = 'mtype:'+mtype
+	Lcompare['itemdata'] = decomposeFileLogItemData(Lcompare['itemdatastr'])
 	Lcompare['date'] = mTime
 	Lcompare['fullpath'] = path
 
@@ -292,11 +394,11 @@ def getFileInfo( path, count=None ):
 def logThisFile( fullpath, name, logfile, opts ):
 	fname = fullpath + name
 
+	count = None
 	if 'useblocks' in opts.keys() and '_count' in opts['useblocks'].keys():
-		obj = getFileInfo( fname, int(opts['useblocks']['_count']) )
-	else:
-		obj = getFileInfo( fname )
+		count = int(opts['useblocks']['_count'])
 
+	obj = getFileInfo( fname, count, opts )
 
 
 	textout = obj['fulltext']
@@ -305,7 +407,7 @@ def logThisFile( fullpath, name, logfile, opts ):
 	fo.write( textout+'\n' )
 	fo.close()
 
-	return textout
+	return obj
 
 
 

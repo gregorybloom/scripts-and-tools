@@ -14,9 +14,12 @@ def pythonExamineFile( filepath, opts ):
 	c=1
 	if 'count' in opts.keys():
 		c=opts['count']
-	sum=shaSum(filepath,c)
+	mtype='md5'
+	if 'mtype' in opts.keys():
+		mtype=opts['mtype']
+	sum=shaSum(filepath,c,mtype)
 	fsize=getSize(filepath)
-	outstr=str(sum)+', '+str(fsize)+', x, '+filepath.rstrip()
+	outstr=str(sum)+', '+str(fsize)+', mtype:'+mtype+', x, '+filepath.rstrip()
 	return outstr
 
 def pythonWalk( dirpath, targetlog, opts ):
@@ -33,22 +36,29 @@ def pythonWalk( dirpath, targetlog, opts ):
 				c=1
 				if 'count' in opts.keys():
 					c=opts['count']
-				sum=shaSum(fullpath,c)
+				mtype='md5'
+				if 'mtype' in opts.keys():
+					mtype=opts['mtype']
+				sum=shaSum(fullpath,c,mtype)
 				fsize=getSize(fullpath)
-				outstr=str(sum)+', '+str(fsize)+', x, '+fullpath.rstrip()
+				outstr=str(sum)+', '+str(fsize)+', mtype:'+mtype+', x, '+fullpath.rstrip()
 				outlog.write(outstr+'\n')
 	outlog.close()
 def testMD5Fast( dirpath, targetlog, opts ):
 #	https://stackoverflow.com/questions/33152171/why-does-multiprocessing-process-join-hang
-	def md5er(q,log,dir,filters=None):
+	def md5er(q,log,dir,opts,filters=None):
 		while True:
 			fname=q.get()
 			if fname is None:
 				break
+			mtype='md5'
+			if 'mtype' in opts.keys():
+				mtype=opts['mtype']
+
 			proc = subprocess.Popen(["/usr/bin/sigtool", "--md5", fname],stdout=subprocess.PIPE)
 			(out, err) = proc.communicate()
 			logfile = open(log, "a+", -1)
-			logfile.write(', '.join(out.split(':')[0:2])+', x, '+fname+"\n")
+			logfile.write(', '.join(out.split(':')[0:2])+', mtype:'+mtype+', x, '+fname+"\n")
 			logfile.close()
 			proc.wait()
 			q.task_done()
@@ -64,7 +74,7 @@ def testMD5Fast( dirpath, targetlog, opts ):
 		namefilters=opts['filters']
 
 	for i in range(num_threads):
-		worker = Thread(target=md5er, args=(filequeue,targetlog,dirpath,namefilters))
+		worker = Thread(target=md5er, args=(filequeue,targetlog,dirpath,opts,namefilters))
 		worker.setDaemon(True)
 		threads.append(worker)
 		worker.start()
@@ -91,13 +101,17 @@ def file_len(fname):
 			pass
 	return (i + 1)
 
-def shaSum(filename,count=1):
-#	    sha = hashlib.sha256()
-    sha = hashlib.md5()
-    with open(filename, 'rb') as f:
-        for chunk in iter(lambda: f.read(count * 128 * sha.block_size), b''):
-            sha.update(chunk)
-    return sha.hexdigest()
+def shaSum(filename,count=1,style="md5"):
+	if style == "md5":
+		sha = hashlib.md5()
+	if style == "sha1":
+		sha = hashlib.sha1()
+	if style == "sha256":
+		sha = hashlib.sha256()
+	with open(filename, 'rb') as f:
+		for chunk in iter(lambda: f.read(count * 128 * sha.block_size), b''):
+			sha.update(chunk)
+	return sha.hexdigest()
 def getSize(filename):
 	sizeSt = -1
 	try:
@@ -124,26 +138,30 @@ def useMethod(method, path, targetlog, opts):
 		del opts['numthreads']
 	if method == "python_thread":
 		# uses threading/queuing with python 'log this file'
-		opts['threadprocess']=True
+#		opts['threadprocess']=True
+		opts['walkmode']='threadprocess'
 		filelist.beginMD5Walk(path,targetlog,opts)
-		del opts['threadprocess']
+#		del opts['threadprocess']
 	if method == "python_thread4":
 		# uses threading/queuing with python 'log this file'
 		opts['numthreads']=4
-		opts['threadprocess']=True
+#		opts['threadprocess']=True
+		opts['walkmode']='threadprocess'
 		filelist.beginMD5Walk(path,targetlog,opts)
-		del opts['threadprocess']
+#		del opts['threadprocess']
 		del opts['numthreads']
 	if method == "python_quick":
 		# uses straight python 'log this file'
-		opts['quickprocess']=True
+#		opts['quickprocess']=True
+		opts['walkmode']='quickprocess'
 		filelist.beginMD5Walk(path,targetlog,opts)
-		del opts['quickprocess']
+#		del opts['quickprocess']
 	if method == "sigtool_quick":
 		# uses subprocess sigtool with no queue/threading
-		opts['sigprocess']=True
+#		opts['sigprocess']=True
+		opts['walkmode']='sigprocess'
 		filelist.beginMD5Walk(path,targetlog,opts)
-		del opts['sigprocess']
+#		del opts['sigprocess']
 	if method == "py_walkX":
 		opts['count']=1
 		pythonWalk(path,targetlog,opts)
@@ -215,6 +233,7 @@ driveutils.createNewLog(logname,True)
 outlog = open(logname, 'ab')
 for file in filelist:
 	break
+	###################################
 	for c in countlist:
 		start=datetime.datetime.now()
 		textstr=pythonExamineFile(file,{'count':c})
@@ -229,6 +248,7 @@ outlog.close()
 countlist=[64,96,128,160,192,224,256,288,320,352]
 countlist=[16,32,64,96,128,160,192,224,256,288,320,352]
 countlist=[16,32,64,96,128,160,192,224]
+countlist=[64,96,128,160,192]
 folderlist=[]
 #folderlist.append( "/media/raid/CLOUD_BACKUP/" )
 #folderlist.append( "/media/raid/Data/" )
@@ -237,27 +257,31 @@ folderlist=[]
 #folderlist.append( "/media/raid/SERVER_SCRIPTS/" )
 #folderlist.append( "/media/raid/Software/" )
 #folderlist.append( "/media/raid/Media/Books/" )
-folderlist.append( "/media/raid/Media/Comics/" )
-folderlist.append( "/media/raid/Media/Images/" )
-folderlist.append( "/media/raid/Media/Music/" )
-folderlist.append( "/media/raid/Media/Recordings/" )
-folderlist.append( "/media/raid/Media/-unsorted/" )
-folderlist.append( "/media/raid/SIDE_DRIVES/" )
-folderlist.append( "/media/raid/Media/Videos/" )
+#folderlist.append( "/media/raid/Media/Comics/" )
+#folderlist.append( "/media/raid/Media/Images/" )
+#folderlist.append( "/media/raid/Media/Music/" )
+#folderlist.append( "/media/raid/Media/Recordings/" )
+#folderlist.append( "/media/raid/Media/-unsorted/" )
+#folderlist.append( "/media/raid/SIDE_DRIVES/" )
+#folderlist.append( "/media/raid/Media/Videos/" )
 
-#folderlist.append( "/media/raid/Media/Videos/Anime/-unfinished/Boku no Hero Academia/" )
+folderlist.append( "/media/raid/Media/Videos/Anime/-unfinished/Boku no Hero Academia/" )
 #folderlist.append( "/media/raid/Media/Videos/Other/Misc Movies/" )
 #folderlist.append( "/media/raid/Media/Videos/Anime/-unfinished/Trinity Seven[DameDesuYo]/" )
-for folder in folderlist:
-	for c in countlist:
-		start=datetime.datetime.now()
-		opts['count']=c
-		pythonWalk(folder,logname,opts)
-		end=datetime.datetime.now()
-		print c,(end-start),folder
+mtypearr=["md5","sha1"]
+for mtype in mtypearr:
+	for folder in folderlist:
+		for c in countlist:
+			start=datetime.datetime.now()
+			opts['count']=c
+			opts['mtype']=mtype
+			pythonWalk(folder,logname,opts)
+			end=datetime.datetime.now()
+			print mtype,c,(end-start),folder
 #		print textstr
-sys.exit(0)
 
+sys.exit(0)
+#############################################################################################################
 
 
 timeset={}

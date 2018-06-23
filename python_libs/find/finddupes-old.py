@@ -39,7 +39,7 @@ def beginWalkCompare(logA, logB, logname, groupby="sha"):
 
 		reg = r'^[A-Za-z0-9]+, [0-9]+,'
 		if re.search(reg,line):
-			objA = driveutils.decomposeFileLog(line,1)
+			objA = driveutils.decomposeFileLog(line)
 
 
                         hash = findgroup(objA)
@@ -89,7 +89,7 @@ def preWalkCompare(objA, logB, groupby):
 
 		reg = r'^[A-Za-z0-9]+, [0-9]+,'
 		if re.search(reg,line2):
-			objB2 = driveutils.decomposeFileLog(line2,1)
+			objB2 = driveutils.decomposeFileLog(line2)
 
                         grID = comparegroup(objA, objB2, groupby)
                         if grID != False:
@@ -112,7 +112,7 @@ def walkCompare(objA, logB, logname, groupby):
 
 		reg = r'^[A-Za-z0-9]+, [0-9]+,'
 		if re.search(reg,line2):
-			objB = driveutils.decomposeFileLog(line2,1)
+			objB = driveutils.decomposeFileLog(line2)
 
                         if log1==log2:
                                 if objA['fullpath']==objB['fullpath']:

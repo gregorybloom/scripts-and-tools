@@ -89,7 +89,6 @@ targetList['raid_backup']['foldersets']['m_unsortedset']={}
 targetList['raid_backup']['foldersets']['m_unsortedset']['source']='/Media/-unsorted'
 targetList['raid_backup']['foldersets']['m_unsortedset']['target1']='/RAID_BACKUP/Media/-unsorted'
 targetList['raid_backup']['foldersets']['m_unsortedset']['target3']='/RAID_BACKUP/Media/-unsorted'
-targetList['raid_backup']
 
 
 do_only=['servscriptset','miscset','m_recordingset','videoset']
@@ -121,7 +120,7 @@ if "_printon" in arglist:
 	if pt < len(arglist):
 		runopts['walkopts']['printon']=int(arglist[pt])
 
-
+runopts['walkopts']['mtype']='sha1'
 runopts['walkopts']['filters']={'deny':["garbage"],'allowonly':["imgs","videos","docs","zip","music","misc"]}
 #runopts['walkopts']['method']={'slow':[],'fast':[]}
 
@@ -153,6 +152,8 @@ if "dropold" in arglist:
 
 #if "skipmovecheck" in arglist:
 #	runopts['compopts']['skipmovecheck']=True
+
+runopts['compopts']['mtype']='sha1'
 if 'readname' not in runopts['compopts'].keys():
 	runopts['compopts']['readname']="backuprun"
 logfolder="/var/log/validates"

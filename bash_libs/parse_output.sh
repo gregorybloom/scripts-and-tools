@@ -31,6 +31,7 @@ parsersync() {
   parsefile="$1"
   targetfile="$2"
 
+  touch "$parsefile"
   PRESUFF="(?:[\w\:\s\/]+\[\d+\]\s+)?"
   if grep -qP "^$PRESUFF\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile"; then
     echo "parsing 'a'"
@@ -165,6 +166,7 @@ grepRSyncFailure() {
 #  prefregstr="$1"
   thetmpfile="$1"
   logresult="$2"
+  touch "$thetmpfile"
   PRESUFF="(?:[\w\:\s\/]+\[\d+\]\s+)?"
   if grep -qP "^$PRESUFF\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$thetmpfile"; then
     grep -nP "^$PRESUFF\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$thetmpfile" >> "$logresult"

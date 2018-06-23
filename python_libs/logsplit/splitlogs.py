@@ -123,8 +123,8 @@ def walkSplitFileList(logA, subfolder):
 		i=i+1
 		reg = r'^[A-Za-z0-9]+, [0-9]+,'
 		if re.search(reg,line):
-		
-			Acompare = driveutils.decomposeFileLog(line,1)
+
+			Acompare = driveutils.decomposeFileLog(line)
 			writeToSplitLog(Acompare, subfolder)
 
 

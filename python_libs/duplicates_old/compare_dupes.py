@@ -354,7 +354,7 @@ def loadMasterObjVals(masterobj):
 	if 'line' in masterobj.keys():
 		if re.search(reg,masterobj['line']):
 			l = masterobj['line']
-			Acompare = driveutils.decomposeFileLog(masterobj['line'],1)
+			Acompare = driveutils.decomposeFileLog(masterobj['line'])
 			masterobj['cur_sha']=Acompare['sha']
 
 			groups = re.findall(r'^(.*\/)[^\/]*$',Acompare['fullpath'])
@@ -366,7 +366,7 @@ def loadMasterObjVals(masterobj):
 			masterobj['line']=l
 		elif re.search(regE1,masterobj['line']) or re.search(regE2,masterobj['line']) or re.search(regE3,masterobj['line']):
 			l = masterobj['line']
-			Acompare = driveutils.decomposeFileLog(masterobj['line'],1)
+			Acompare = driveutils.decomposeFileLog(masterobj['line'])
 			masterobj['cur_sha']=Acompare['sha']
 
 			groups = re.findall(r'\/(\/.*)$',Acompare['fullpath'])
