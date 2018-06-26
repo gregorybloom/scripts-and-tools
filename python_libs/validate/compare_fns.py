@@ -94,19 +94,20 @@ def grabBasePath(logsetname,localdrive,datasets):
 	return basepath
 
 def redoDataFile(logline,logsetname,relativePath,basePath,useopts):
-	filedata=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]+,(?:\s*\w[^,]+,)?\s*)\/',logline)[0]
-	filepath=re.findall(r'^\w+,\s*\d+,\s*\w[^,]+,(?:\s*\w[^,]+,)?\s*(\/.*\S)\s*$',logline)[0]
+	filedata=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]*,\s*)\/',logline)[0]
+	filepath=re.findall(r'^\w+,\s*\d+,\s*\w[^,]*,\s*(\/.*\S)\s*$',logline)[0]
 
 	mopt='md5'
 	if 'mtype' in useopts.keys():
 		mopt=useopts['mtype']
 
 	mcheck='md5'
-	if len(filedata.split(',')) >= 5:
-		mcheckdata=re.findall(r'^\w+,\s*\d+,\s*(\w[^,]+),\s*\w[^,]+,\s*$',filedata)[0]
-		mcheckdata=driveutils.decomposeFileLogItemData(mcheckdata)
-		if 'mtype' in mcheckdata.keys():
-			mcheck = mcheckdata['mtype']
+#	if len(filedata.split(',')) >= 5:
+#	if re.find(r'',filedata)
+	mcheckdata=re.findall(r'^\w+,\s*\d+,\s*(\w[^,]*),\s*$',filedata)[0]
+	mcheckdata=driveutils.decomposeFileLogItemData(mcheckdata)
+	if 'mtype' in mcheckdata.keys():
+		mcheck = mcheckdata['mtype']
 
 	if mcheck == mopt:
 		newline = filedata+filepath+"\n"
@@ -124,7 +125,7 @@ def redoDataFile(logline,logsetname,relativePath,basePath,useopts):
 			mcheck3=re.findall(r'^\w+,\s*(\d+),.*$',filedata)[0]
 			if infobjOld['sha'] == mcheck2 and infobjOld['bytesize'] == mcheck3:
 				infobjNew=driveutils.getFileInfo(dlpath,None,{'mtype':mopt})
-				masdata=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]+,\s*(?:\w[^,]+,)?\s*)\/.*$',infobjNew['fulltext'])[0]
+				masdata=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]*,\s*)\/.*$',infobjNew['fulltext'])[0]
 		if masdata is not None:
 			newline = masdata+filepath+"\n"
 			return newline
@@ -211,7 +212,7 @@ def buildCompSet(lowest,matches,compSET,masterlist):
 	compSET['_oldmaster']['state'] = 'missing'
 	compSET['_oldmaster']['cur_path'] = lowest
 
-#	print "&&&&",masterlist["_oldmaster"].keys(),lowest,'==',masterlist["_oldmaster"]
+	print "&&&&",masterlist["_oldmaster"].keys(),lowest,'==',masterlist["_oldmaster"]
 	if 'cur_path' in masterlist["_oldmaster"].keys():
 		if lowest == masterlist["_oldmaster"]["cur_path"]:
 			compSET['_oldmaster']['state'] = 'present'
@@ -291,12 +292,16 @@ def addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets,useopts):
 		stateval = 'present'
 
 		if 'cur_path' not in compObj.keys() or compObj['cur_path'] != lowest:
+			print '(((1)))', compObj.keys(), lowest, '==',compObj
+			print '(((2)))', compSET['_oldmaster'].keys(), lowest,compSET['_oldmaster']
 			stateval = 'missing'
 		elif 'loadErr' in compObj.keys() and compObj['loadErr'] == True:
 			stateval = 'error'
 		elif 'cur_sha' not in compObj.keys():
 			stateval = 'error'
 		elif 'cur_sha' not in compSET['_oldmaster'].keys() or compSET['_oldmaster']['state'] == "missing":
+			print '(((3)))', compSET['_oldmaster'].keys(), lowest,compSET['_oldmaster']
+			print '(((4)))', compObj.keys(), lowest,compObj
 			stateval = 'new'
 		elif compObj['cur_bsize'] != compSET['_oldmaster']['cur_bsize']:
 			stateval = 'conflict'

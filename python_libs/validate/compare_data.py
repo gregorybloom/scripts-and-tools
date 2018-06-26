@@ -17,7 +17,7 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 	masterline = None
 	if compSET['_summary']['masterstate'] != 'missing':
 		if 'line' in compSET['_oldmaster'].keys():
-			relook=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]+,(?:\s*\w[^,]+,)?\s*)\/',compSET['_oldmaster']['line'])
+			relook=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]*,\s*)\/',compSET['_oldmaster']['line'])
 			if len(relook)>0:
 				masterfiledata = relook[0]
 	if masterfiledata is None:
@@ -35,7 +35,7 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 				sourcename=arrs[c]
 				if sourcename in compSET['_sources'].keys():
 					if 'line' in compSET['_sources'][sourcename].keys():
-						relook=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]+,(?:\s*\w[^,]+,)?\s*)\/',compSET['_sources'][sourcename]['line'])
+						relook=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]*,\s*)\/',compSET['_sources'][sourcename]['line'])
 						if len(relook)>0:
 							masterfiledata = relook[0]
 				c+=1
@@ -132,8 +132,8 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 		for sourcename,sourceobj in compSET['_sources'].iteritems():
 			if sourceobj['state'] == 'missing':
 				if compSET['_summary']['masterstate'] != "missing" and masterline is not None:
-					groups1 = re.findall(r'^(\w+,\s*\d+,\s*\w[^,]+,(?:\s*\w[^,]+,)?\s*)\/masterpath\/.*?\/\/.*?\s*$',masterline.rstrip())
-					groups2 = re.findall(r'^\w+,\s*\d+,\s*\w[^,]+,(?:\s*\w[^,]+,)?\s*\/masterpath\/.*?\/\/(.*?)\s*$',masterline.rstrip())
+					groups1 = re.findall(r'^(\w+,\s*\d+,\s*\w[^,]*,\s*)\/masterpath\/.*?\/\/.*?\s*$',masterline.rstrip())
+					groups2 = re.findall(r'^\w+,\s*\d+,\s*\w[^,]*,\s*\/masterpath\/.*?\/\/(.*?)\s*$',masterline.rstrip())
 					templinebody=groups1[0]
 					masterrelativepath=groups2[0]
 					temppath=None

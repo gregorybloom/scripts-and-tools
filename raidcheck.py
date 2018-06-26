@@ -91,13 +91,14 @@ targetList['raid_backup']['foldersets']['m_unsortedset']['target1']='/RAID_BACKU
 targetList['raid_backup']['foldersets']['m_unsortedset']['target3']='/RAID_BACKUP/Media/-unsorted'
 
 
-do_only=['servscriptset','miscset','m_recordingset','videoset']
-do_only=['miscset','m_recordingset','m_bookset','cloudset']
-do_only=['m_bookset']
-do_only=['cloudset']
+#do_only=['servscriptset','miscset','m_recordingset','videoset']
+#do_only=['miscset','m_recordingset','m_bookset','m_musicset']
+do_only=['m_musicset']
+#do_only=['m_bookset']
+#do_only=['cloudset']
 for k in targetList['raid_backup']['foldersets'].keys():
 	if k not in do_only:
-		break
+#		break
 		del targetList['raid_backup']['foldersets'][k]
 
 
@@ -145,6 +146,7 @@ if "_readname" in arglist:
 
 
 if "verbose" in arglist:
+#	runopts['walkopts']['verbose']=True
 	runopts['compopts']['verbose']=True
 if "dropold" in arglist:
 	runopts['compopts']['justdropmissing']=True

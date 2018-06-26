@@ -150,7 +150,7 @@ def createNewLog(logname, reuse=False):
 
 
 
-def sortLogByPath(logpath,order=4):
+def sortLogByPath(logpath,order=3):
 	if os.path.exists(logpath+".sorttmp"):
 		return
 	writefile = open(logpath+'.sorttmp', 'wb')
@@ -170,6 +170,11 @@ def sortLogByPath(logpath,order=4):
 
 def decomposeFileLogItemData(logitemstr):
 	Larray = []
+	if re.match(r'^\s*x\s*$',logitemstr):
+		return {}
+	if re.match(r'^\s*\w{3}\s+\w{3}\s+\d\d?\s+(?:\d\d\:){2}\d\d\s+2[01]\d\d\s*$',logitemstr):
+		return {'changetime':logitemstr.rstrip().lstrip()};
+
 	if logitemstr.find("|") != -1:
 		Lparts = logitemstr.lstrip().split('|')
 		Larray.extend(Lparts)
@@ -186,29 +191,22 @@ def decomposeFileLogItemData(logitemstr):
 
 def decomposeFileLog(logstr, logtype=1):
 	if (logtype == 1):
-		splitlevel = 3
-		if re.match(r'^\w+,\s*\d+,\s*\w[^,]+,\s*\w[^,]+,\s*\/.*$',logstr):
-			splitlevel = 4
-		Lparts = logstr.split(',',splitlevel)
-		Lpathparts = Lparts[splitlevel].rsplit('/',1)
+		Lparts = logstr.split(',',3)
+		Lpathparts = Lparts[3].rsplit('/',1)
 		Lnameparts = Lpathparts[1].rsplit('.',1)
 
 		Lcompare = {}
 		Lcompare['sha'] = Lparts[0].strip()
 		Lcompare['bytesize'] = Lparts[1].strip()
-		if splitlevel == 4:
-			Lcompare['itemdatastr'] = Lparts[2].strip()
-			Lcompare['itemdata'] = decomposeFileLogItemData(Lcompare['itemdatastr'])
-		else:
-			Lcompare['itemdatastr'] = 'mtype:md5'
-			Lcompare['itemdata'] = decomposeFileLogItemData(Lcompare['itemdatastr'])
+		Lcompare['itemdatastr'] = Lparts[2].strip()
+		Lcompare['itemdata'] = decomposeFileLogItemData(Lcompare['itemdatastr'])
+
 		if 'mtype' in Lcompare['itemdata'].keys():
 			Lcompare['mtype'] = Lcompare['itemdata']['mtype']
 		else:
 			Lcompare['mtype'] = 'md5'
 
-		Lcompare['date'] = Lparts[(splitlevel-1)].strip()
-		Lcompare['fullpath'] = Lparts[splitlevel].strip()
+		Lcompare['fullpath'] = Lparts[3].strip()
 		Lcompare['path'] = Lpathparts[0]
 		Lcompare['filename'] = Lpathparts[1]
 		if len(Lnameparts)>1:
@@ -367,14 +365,20 @@ def getFileInfo( path, count=None, opts=None ):
 
 	Lcompare = {}
 
-	textout = shaSt +', '+ str(sizeSt) +', mtype:'+mtype+', '+ mTime +', '+ path
+	textout = shaSt +', '+ str(sizeSt) +', mtype:'+mtype
+
+#	textout +='|changetime:'+mTime
+
+	textout +=', '+ path
 	Lcompare['fulltext'] = textout
 
 	Lcompare['sha'] = shaSt
 	Lcompare['bytesize'] = str(sizeSt)
 	Lcompare['itemdatastr'] = 'mtype:'+mtype
+#	Lcompare['itemdatastr'] += '|changetime:'+mTime
+
 	Lcompare['itemdata'] = decomposeFileLogItemData(Lcompare['itemdatastr'])
-	Lcompare['date'] = mTime
+#	Lcompare['date'] = mTime
 	Lcompare['fullpath'] = path
 
 	Lpathparts = path.rsplit('/',1)

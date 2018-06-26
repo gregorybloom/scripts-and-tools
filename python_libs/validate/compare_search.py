@@ -189,7 +189,7 @@ def	writeMoveOptions(compSET,newlog,readname,runname,logsetname,steplist,masterl
 
 		masterfiledata = None
 		if 'line' in compSET['_oldmaster'].keys():
-			relook=re.findall(r'^(\w+,\s*\d+,[^,]+,(?:[^,]+,)?\s*)\/',compSET['_oldmaster']['line'])
+			relook=re.findall(r'^(\w+,\s*\d+,[^,]+,\s*)\/',compSET['_oldmaster']['line'])
 			if len(relook)>0:
 				masterfiledata = relook[0]
 		if masterfiledata is not None:

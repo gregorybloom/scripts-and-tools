@@ -212,6 +212,9 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 					continue
 				startpath=foundlist[sourcename]
 
+				if 'verbose' in runopts['walkopts'].keys() and runopts['walkopts']['verbose'] == True:
+					print '- Begin Walking over',setname,',',sourcename
+
 				logname= tmppath+'pieces/'+sourcename+'/'+setname+'/md5vali-'+sourcename+'-'+timestr+'.txt'
 
 				driveutils.createNewLog(logname,False)
@@ -240,6 +243,8 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 					timeset['md5walk']['_parts'][setname][sourcename]['sigtool']={}
 					timeset['md5walk']['_parts'][setname][sourcename]['sigtool']['start']=datetime.datetime.now()
 
+					if 'verbose' in runopts['walkopts'].keys() and runopts['walkopts']['verbose'] == True:
+						print '-  - use "sigtool" method'
 					driveutils.walkMD5Fast(targetpath+'/',logname,runopts['walkopts'])
 
 					timeset['md5walk']['_parts'][setname][sourcename]['sigtool']['end']=datetime.datetime.now()
@@ -256,6 +261,8 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 					timeset['md5walk']['_parts'][setname][sourcename]['python']={}
 					timeset['md5walk']['_parts'][setname][sourcename]['python']['start']=datetime.datetime.now()
 
+					if 'verbose' in runopts['walkopts'].keys() and runopts['walkopts']['verbose'] == True:
+						print '-  - use "python" method'
 					filelist.beginMD5Walk(targetpath,logname,runopts['walkopts'])
 
 					timeset['md5walk']['_parts'][setname][sourcename]['python']['end']=datetime.datetime.now()
@@ -279,6 +286,9 @@ def createNewTmpMD5Logs(runname,timestr,infosets,foundlist,logfolder,tmpfolder,t
 				masterpath=logpath+'master/';	#	md5vali-master-
 #				logset[name][setname]['master']=masterpath
 				mastset[runname]=masterpath
+
+				if 'verbose' in runopts['walkopts'].keys() and runopts['walkopts']['verbose'] == True:
+					print '- .End Walking over',setname,',',sourcename
 
 #				print '---- b',setname,sourcename,startpath,logname
 #				print '---- c',setname,sourcename,masterpath
@@ -377,6 +387,9 @@ def md5SourcesAndTargets(targetlist,readname,runname,infosets,logfolder,tmpfolde
 		else:
 			masterlog=grabAMasterLog(masterroute,datasets['timestr'],runopts['compopts'])
 		driveutils.sortLogByPath(masterlog)
+
+		if 'verbose' in runopts['compopts'].keys() and runopts['compopts']['verbose'] == True:
+			print "- Splitting Master Log: ",masterlog
 		masterlogset=splitMasterLog(masterlog,logfolder,tmpfolder,runname,datasets['timestr'],runopts['compopts'])
 
 		timeset['splitlogs']['end'] = datetime.datetime.now()
