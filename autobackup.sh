@@ -125,11 +125,17 @@ sourcematch() {
   elif [ ! "$SOURCE_SCRIPT" == false ]; then
     if [[ $SOURCE_SCRIPT == $sourcescriptpath* ]]; then
       true
+    elif [[ "$sourcescriptpath" == "/drives/c" ]] && [[ "$HOME" == "/home/mobaxterm" ]] && [[ "$SCRIPTPATH" == /home/* ]]; then
+      true
     else
       false
     fi
   else
-    false
+    if [[ "$sourcescriptpath" == "/drives/c" ]] && [[ "$HOME" == "/home/mobaxterm" ]] && [[ "$SCRIPTPATH" == /home/* ]]; then
+      true
+    else
+      false
+    fi
   fi
 }
 #####################################
@@ -249,6 +255,11 @@ scanrsync() {
   tmperrfile="$3"                 # $RUNLOGPATH/prelog_errs-$LOGSUFFIX
   tmplog="$4"                     # $RUNTMPPATH/rsynclog.txt
   errdump="$ERRDUMP_FILEPATH"        # $ERRDUMP_FILEPATH
+
+  if [ ! -s "$pathsfile" ]; then
+    echo "No paths found!"
+    return
+  fi
 
   rcount=-1
   for j in $(cat "$pathsfile"); do
@@ -610,6 +621,8 @@ if [ "$VALID_CHECK" == true ]; then
 
       mkdir -p "$targetdrivepath/logs/"
       touch "$tmpfile.x2"
+
+      # Save the validation logs
       rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile.x2" "$vbaselog" "$targetdrivepath/logs/"
 
 #      parseresult=$(grepRSyncFailure "$prefregstr" "$tmpfile.2" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX")

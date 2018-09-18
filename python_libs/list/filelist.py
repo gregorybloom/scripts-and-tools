@@ -26,7 +26,7 @@ def beginMD5Walk(dirpath,logname,walkopts=None):
 
 	driveutils.createNewLog(logname,False)
 
-	if 'verbose' in walkopts.keys() and walkopts['verbose'] == True:
+	if 'verbose' in walkopts.keys() and walkopts['verbose'] >= 1:
 		print '- .start',dirpath
 
 	if 'walkmode' not in walkopts.keys():
@@ -34,7 +34,7 @@ def beginMD5Walk(dirpath,logname,walkopts=None):
 	else:
 		walkMD5Fast( dirpath, logname, walkopts )
 
-	if 'verbose' in walkopts.keys() and walkopts['verbose'] == True:
+	if 'verbose' in walkopts.keys() and walkopts['verbose'] >= 1:
 		print '- .end',dirpath
 
 def md5Walk(base,path,logname,walkopts=None):
@@ -43,7 +43,7 @@ def md5Walk(base,path,logname,walkopts=None):
 	if walkopts is None:
 		walkopts={}
 
-	if 'verbose' in walkopts.keys() and walkopts['verbose'] == True:
+	if 'verbose' in walkopts.keys() and walkopts['verbose'] >= 1:
 		print '- . . read',base,',',"/"+path
 
 	folderslist=[]
@@ -71,7 +71,7 @@ def md5Walk(base,path,logname,walkopts=None):
 		if 'filters' in walkopts.keys():
 			filters=walkopts['filters']
 
-		if 'verbose' in walkopts.keys() and walkopts['verbose'] == True:
+		if 'verbose' in walkopts.keys() and walkopts['verbose'] >= 1:
 			print '- . . . check',base,',',"/"+path,',',pathTo
 		if(driveutils.ignoreFile(namestr,path,pathTo,filters)):
 #			filew = open("/logs/test/skipped.txt", "a")
@@ -92,13 +92,13 @@ def md5Walk(base,path,logname,walkopts=None):
 					if (ix % walkopts['printon'])==0:
 						print walkopts['printon'],' logged '+pathTo
 
-				if 'verbose' in walkopts.keys() and walkopts['verbose'] == True:
+				if 'verbose' in walkopts.keys() and walkopts['verbose'] >= 1:
 					print '- . . . check',base,',',"/"+path,',',pathTo
 
-				if 'verbose' in walkopts.keys() and walkopts['verbose'] == True:
+				if 'verbose' in walkopts.keys() and walkopts['verbose'] >= 1:
 					print '- . . . log start',base,',',"/"+path,',',pathTo
 				driveutils.logThisFile( base+path+'/', namestr, logname, walkopts )
-				if 'verbose' in walkopts.keys() and walkopts['verbose'] == True:
+				if 'verbose' in walkopts.keys() and walkopts['verbose'] >= 1:
 					print '- . . . log end',base,',',"/"+path,',',pathTo
 
 
@@ -110,6 +110,6 @@ def md5Walk(base,path,logname,walkopts=None):
 		else:
 			folderslist.append(namestr)
 	for foldern in folderslist:
-		if 'verbose' in walkopts.keys() and walkopts['verbose'] == True:
+		if 'verbose' in walkopts.keys() and walkopts['verbose'] >= 1:
 			print '- . . . next',base,',',"/"+path,',',foldern
 		md5Walk(base,path+"/"+foldern,logname,walkopts)

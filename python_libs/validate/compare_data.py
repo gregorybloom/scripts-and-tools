@@ -49,7 +49,9 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 
 		basepath=comparefns.grabBasePath(logsetname,'source',datasets)
 		masterend='/masterpath/'+logsetname+'/'+compSET['_summary']['path']
-		newermasterline=comparefns.redoDataFile(masterfiledata+masterend,logsetname,compSET['_summary']['path'],basepath,useopts)
+		print ' GETx ','newmaster',compSET['_summary']
+		newermasterline=comparefns.redoDataFile(masterfiledata+masterend,logsetname,compSET['_summary']['path'],basepath,compSET['_summary']['hashes'],useopts)
+		print '  - after redoX:',compSET['_summary']['hashes'].keys()
 		compSET['_summary']['masterline']=newermasterline.rstrip()
 		masterline=newermasterline
 
@@ -94,7 +96,7 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 			mtest = masterline.encode('utf-8')
 		except UnicodeDecodeError as exception:
 			mtest = masterline
-		if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+		if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 			print "==== ",mtest
 		newlog['obj'].write(mtest)
 
@@ -114,16 +116,16 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 
 		driveutils.addToLog( "\n-------- md5 "+overall+" --------\n", logpath )
 
-		if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+		if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 			print
 			print "-------- md5 "+overall+" --------"
 
 		if compSET['_summary']['masterstate'] == "missing" or masterline is None:
-			if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+			if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 				print "master - missing, "+masterfilepath
 			driveutils.addToLog( "master - missing, "+masterfilepath+"\n", logpath )
 		else:
-			if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+			if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 				print "master - "+masterline.rstrip()
 			driveutils.addToLog( "master - "+masterline, logpath )
 
@@ -138,23 +140,23 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 					masterrelativepath=groups2[0]
 					temppath=None
 					for logitem in datasets['loglist']:
-						if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+						if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 							print
 						if 'setname' in logitem.keys() and 'sourcename' in logitem.keys() and 'path' in logitem.keys():
 							if logitem['setname'] == logsetname and logitem['sourcename'] == sourcename:
 								temppath = logitem['path'].rstrip('/')+'//'+masterrelativepath.lstrip('/')
 					if temppath is not None:
 						templinebody+=temppath
-						if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+						if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 							print sourcename,"- missing, "+templinebody.rstrip()
 						driveutils.addToLog( sourcename+"- missing, "+templinebody+"\n", logpath )
 					else:
-						if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+						if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 							print sourcename,"- missing, "+masterrelativepath.rstrip()
 						sys.exit(1)
 				else:
 					######################## find a line from a partner object elsewhere?
-					if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+					if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 						print sourcename,"- missing, "+sourceobj['line'].rstrip()
 					driveutils.addToLog( sourcename+"- missing, "+sourceobj['line'], logpath )
 			elif sourceobj['state'] == 'moved':
@@ -174,7 +176,7 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 				except UnicodeDecodeError as exception:
 					ostrtest = outstring
 
-				if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+				if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 					print ostrtest
 				driveutils.addToLog( ostrtest+"\n", logpath )
 				driveutils.addToLog( ostrtest+"\n", movedlogpath)
@@ -186,7 +188,7 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 				except UnicodeDecodeError as exception:
 					ostrtest = outstring
 
-				if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+				if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 					print ostrtest
 				driveutils.addToLog( ostrtest+"\n", logpath )
 				driveutils.addToLog( ostrtest+"\n", movedlogpath)
@@ -196,11 +198,11 @@ def	writeOutput(compSET,newlog,runname,logsetname,steplist,masterlist,datasets,u
 				if highlight == 'present':
 					highlight = 'match'
 
-				if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+				if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 					print sourcename,"- "+highlight+", "+sourceobj['line'].rstrip()
 				driveutils.addToLog( sourcename+"- "+highlight+", "+sourceobj['line'], logpath )
 
-		if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+		if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 			print "* ",compSET["_summary"]['pstate'],compSET["_summary"]['sstate']
 		driveutils.addToLog( "* "+compSET["_summary"]['pstate']+" "+compSET["_summary"]['sstate'], logpath )
 
@@ -249,14 +251,14 @@ def stepCompareLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,
 	if useopts is None:
 		useopts={}
 
-	comparefns.loadStepList(steplist)
-	comparefns.prepStepListVals(steplist,logsetname,datasets,useopts)
+	comparefns.loadStepList(steplist,useopts)
+	comparefns.prepStepListVals(steplist,readname,runname,logsetname,tmpfolder,datasets,useopts)
 
-	comparefns.loadStepList(masterlist)
-	comparefns.prepStepListVals(masterlist,logsetname,datasets,useopts)
+	comparefns.loadStepList(masterlist,useopts)
+	comparefns.prepStepListVals(masterlist,readname,runname,logsetname,tmpfolder,datasets,useopts)
 
 	# DEFUNCT?
-	comparefns.pushMasterListToGroup(masterlist,logsetname,datasets,useopts)
+	comparefns.pushMasterListToGroup(masterlist,readname,runname,logsetname,tmpfolder,datasets,useopts)
 
 
 	matches = {}
@@ -264,32 +266,32 @@ def stepCompareLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,
 	comparefns.comparePathsInLogSet(matches,masterlist,useopts)
 
 #		print
-	if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+	if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 		for i,item in matches.iteritems():
 			print ':',i,item
 
 	lowest = comparefns.findLowestPath(matches,useopts)
 	if lowest is None:
-		if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+		if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 			print '----------------------------------------------'
 		print '----------------------------------------------'
 		return {'count':None,'lowest':None}
 
 	compSET = {}
-	comparefns.buildCompSet(lowest,matches,compSET,masterlist)
+	comparefns.buildCompSet(lowest,matches,compSET,masterlist,useopts)
 	comparefns.addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets,useopts)
 	comparefns.checkCompSet(lowest,matches,compSET,steplist,logsetname,datasets)
 	if 'skipmovecheck' not in useopts.keys() or not useopts['skipmovecheck']:
 		comparesearch.searchForMove(readname,runname,logsetname,tmpfolder,compSET,masterlist,datasets,useopts)
 
 
-	if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+	if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 		for i,item in compSET["_sources"].iteritems():
 			print '%',i,item['state'],item['cur_sha'],item['cur_mtype'],item['cur_path']
 
 	comparefns.summarizeCompSet(lowest,matches,compSET,steplist,logsetname,datasets)
 
-	if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+	if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 		for i,item in compSET["_summary"].iteritems():
 			print '>',i,item
 
@@ -302,10 +304,10 @@ def stepCompareLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,
 		print outputxt
 
 
-	comparefns.incrementPtrs(compSET['_summary']['compset'],steplist)
-	comparefns.incrementPtrs(compSET['_summary']['compset'],masterlist)
+	comparefns.incrementPtrs(compSET['_summary']['compset'],steplist,useopts)
+	comparefns.incrementPtrs(compSET['_summary']['compset'],masterlist,useopts)
 
-	if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+	if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 		print '----------------------------------------------'
 		print '----------------------------------------------'
 	return {'count':c+1,'lowest':lowest}
@@ -315,18 +317,22 @@ def compareSourcesAndTargets(runname,readname,timeset,masterlog,newmasterlog,tim
 	if useopts is None:
 		useopts={}
 
+	useopts['compmode']="compare"
+	useopts['timestamp']=timestamp
 
 	if 'skipmovecheck' not in useopts.keys() or not useopts['skipmovecheck']:
+		useopts['compmode']="movesearch"
 		timeset['compare']['_parts']['_search'][logsetname] = {}
 		timeset['compare']['_parts']['_search'][logsetname]['start'] = datetime.datetime.now()
 		comparesearch.searchSourcesAndTargets(readname,runname,masterlog,newmasterlog,timestamp,logset,logsetname,targetlist,tmpfolder,datasets,useopts)
 
 		timeset['compare']['_parts']['_search'][logsetname]['end'] = datetime.datetime.now()
 		######## REMOVE ABOVE LINE
+		useopts['compmode']="movebuild"
 		comparesearch.buildMoveLog(readname,runname,timestamp,logset,logsetname,tmpfolder,datasets,useopts)
 		timeset['compare']['_parts']['_search'][logsetname]['end'] = datetime.datetime.now()
 
-
+	useopts['compmode']="compare"
 	if logsetname not in timeset['compare']['_parts']['_compare'].keys():
 		timeset['compare']['_parts']['_compare'][logsetname] = {}
 
@@ -359,13 +365,15 @@ def compareSourcesAndTargets(runname,readname,timeset,masterlog,newmasterlog,tim
 	masterlist['_newmaster']['newtime']=timestamp
 
 
-	if 'verbose' in useopts.keys() and useopts['verbose'] == True:
+	if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
 		print
 	c=0
 	opath=''
 #	print masterlist['_oldmaster']
+	useopts['firstrun']=True
 	while True:
 		col=stepCompareLogs(c,steplist,masterlist,readname,runname,logsetname,tmpfolder,datasets,useopts)
+		useopts['firstrun']=False
 #		print '| check: ',c,opath,col['lowest']
 #		print '----------------------------------------------'
 		if(opath == col['lowest'] and c>0):

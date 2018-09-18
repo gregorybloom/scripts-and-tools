@@ -50,6 +50,9 @@ pythonlog/*
 node_modules/*
 */node_modules/*
 
+node_builds/*
+*/node_builds/*
+
 branches/*
 */branches/*
 

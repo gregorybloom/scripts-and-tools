@@ -2,7 +2,7 @@ from maintenance_loader import *
 
 import os, sys, hashlib, time, shutil, re
 import csv, datetime
-
+import mmh3
 
 import subprocess
 from subprocess import *
@@ -108,6 +108,9 @@ def shaSum(filename,count=1,style="md5"):
 		sha = hashlib.sha1()
 	if style == "sha256":
 		sha = hashlib.sha256()
+#	mmh3.hash_from_buffer(numpy.random.rand(100), signed = False)
+#	if style == "mmh3":
+#		sha = mmh3.hash128('foo', 42, True)
 	with open(filename, 'rb') as f:
 		for chunk in iter(lambda: f.read(count * 128 * sha.block_size), b''):
 			sha.update(chunk)
@@ -255,11 +258,11 @@ folderlist=[]
 #folderlist.append( "/media/raid/Misc/" )
 #folderlist.append( "/media/raid/Projects/" )
 #folderlist.append( "/media/raid/SERVER_SCRIPTS/" )
-#folderlist.append( "/media/raid/Software/" )
-#folderlist.append( "/media/raid/Media/Books/" )
+folderlist.append( "/media/raid/Software/" )
+folderlist.append( "/media/raid/Media/Books/" )
 #folderlist.append( "/media/raid/Media/Comics/" )
-#folderlist.append( "/media/raid/Media/Images/" )
-#folderlist.append( "/media/raid/Media/Music/" )
+folderlist.append( "/media/raid/Media/Images/" )
+folderlist.append( "/media/raid/Media/Music/" )
 #folderlist.append( "/media/raid/Media/Recordings/" )
 #folderlist.append( "/media/raid/Media/-unsorted/" )
 #folderlist.append( "/media/raid/SIDE_DRIVES/" )
@@ -268,7 +271,8 @@ folderlist=[]
 folderlist.append( "/media/raid/Media/Videos/Anime/-unfinished/Boku no Hero Academia/" )
 #folderlist.append( "/media/raid/Media/Videos/Other/Misc Movies/" )
 #folderlist.append( "/media/raid/Media/Videos/Anime/-unfinished/Trinity Seven[DameDesuYo]/" )
-mtypearr=["md5","sha1"]
+#mtypearr=["md5","sha1"]
+mtypearr=["sha1"]
 for mtype in mtypearr:
 	for folder in folderlist:
 		for c in countlist:

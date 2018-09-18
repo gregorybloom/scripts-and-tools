@@ -1,6 +1,10 @@
 
 from maintenance_loader import *
 
+import imp
+SCRIPTPATH = os.path.dirname(os.path.realpath(sys.argv[0]))
+comparesearch = imp.load_source('comparesearch', SCRIPTPATH+'/python_libs/validate/compare_search.py')
+
 import os, sys, hashlib, time, shutil, re
 from sys import version_info
 
@@ -12,7 +16,7 @@ def closeUpFiles(filelist):
 			item['obj'].close()
 #				print 'closed: ',i
 
-def loadStepList(steplist):
+def loadStepList(steplist,useopts):
 	for name,item in steplist.iteritems():
 		if name == "_newmaster":
 			continue
@@ -26,8 +30,11 @@ def loadStepList(steplist):
 #				if aline is None:
 #					print "#!"
 			steplist[name]['line']=aline
+#			steplist[name]['isnew']=isnew
+			if useopts['firstrun']:
+				steplist[name]['isnew']=True
 
-def prepStepListVals(steplist,logsetname,datasets,useopts):
+def prepStepListVals(steplist,readname,runname,logsetname,tmpfolder,datasets,useopts):
 	for name,item in steplist.iteritems():
 		if name == "_newmaster":
 			continue
@@ -41,10 +48,44 @@ def prepStepListVals(steplist,logsetname,datasets,useopts):
 
 
 		if 'line' in item.keys():
-#				print 'x ',name,item.keys(),item['line'].rstrip()
+			if 'verbose' in useopts.keys() and useopts['verbose'] >= 2:
+				print '  ~x ',name,steplist[name]['isnew'],item['line']
+			if not steplist[name]['isnew']:
+				if 'verbose' in useopts.keys() and useopts['verbose'] >= 2:
+					print ' _OLD',name,steplist[name]
+				groups = None
+				if len(item['line']) > 1:
+					Acompare = driveutils.decomposeFileLog(item['line'])
+					groups = re.findall(r'\/(\/.*)$',Acompare['fullpath'])
+				else:
+					continue
+				if groups[0] == steplist[name]['cur_path']:
+#					steplist[name]['cur_sha']=Acompare['sha']
+#					steplist[name]['cur_mtype']=Acompare['mtype']
+#					steplist[name]['cur_bsize']=Acompare['bytesize']
+
+#					steplist[name]['cur_path']=groups[0]
+
+#					steplist[name]['hashes']={}
+#					steplist[name]['hashes'][ Acompare['mtype'] ]=Acompare['sha']
+					continue
+
 			if re.search(reg,item['line']):
 				l = item['line']
 				Acompare = driveutils.decomposeFileLog(item['line'])
+
+				if 'verbose' in useopts.keys() and useopts['verbose'] >= 2:
+					print ' _NEW',name,steplist[name]
+				if 'cur_sha' not in steplist[name].keys() or steplist[name]['cur_sha'] != Acompare['sha']:
+					if 'hashes' not in steplist[name].keys():
+						steplist[name]['hashes']={}
+					elif Acompare['mtype'] not in steplist[name]['hashes'].keys():
+						steplist[name]['hashes']={}
+					elif steplist[name]['hashes'][ Acompare['mtype'] ] != Acompare['sha']:
+						steplist[name]['hashes']={}
+
+				steplist[name]['hashes'][ Acompare['mtype'] ]=Acompare['sha']
+
 				steplist[name]['cur_sha']=Acompare['sha']
 				steplist[name]['cur_mtype']=Acompare['mtype']
 				steplist[name]['cur_bsize']=Acompare['bytesize']
@@ -56,6 +97,17 @@ def prepStepListVals(steplist,logsetname,datasets,useopts):
 			elif re.search(regE1,item['line']) or re.search(regE2,item['line']) or re.search(regE3,item['line']):
 				l = item['line']
 				Acompare = driveutils.decomposeFileLog(item['line'])
+
+				if 'cur_sha' not in steplist[name].keys() or steplist[name]['cur_sha'] != Acompare['sha']:
+					if 'hashes' not in steplist[name].keys():
+						steplist[name]['hashes']={}
+					elif Acompare['mtype'] not in steplist[name]['hashes'].keys():
+						steplist[name]['hashes']={}
+					elif steplist[name]['hashes'][ Acompare['mtype'] ] != Acompare['sha']:
+						steplist[name]['hashes']={}
+
+				steplist[name]['hashes'][ Acompare['mtype'] ]=Acompare['sha']
+
 				steplist[name]['cur_sha']=Acompare['sha']
 				steplist[name]['cur_mtype']=Acompare['mtype']
 				steplist[name]['cur_bsize']=Acompare['bytesize']
@@ -70,19 +122,39 @@ def prepStepListVals(steplist,logsetname,datasets,useopts):
 				steplist[name]['cur_sha']=None
 				steplist[name]['cur_mtype']=None
 				steplist[name]['cur_bsize']=None
+				steplist[name]['hashes']={}
 
 			if steplist[name]['cur_mtype'] is not None:
 				if steplist[name]['cur_mtype'] != useopts['mtype']:
-					if name == '_oldmaster':
-						basepath = grabBasePath(logsetname,'source',datasets)
+
+					if useopts['compmode'] == "compare":
+						if useopts['mtype'] not in steplist[name]['hashes'].keys():
+							comparesearch.grabFromNewCalcs(steplist,name,readname,runname,logsetname,name,tmpfolder,useopts)
+
+					if useopts['mtype'] not in steplist[name]['hashes'].keys():
+						if name == '_oldmaster':
+							basepath = grabBasePath(logsetname,'source',datasets)
+						else:
+							basepath = grabBasePath(logsetname,name,datasets)
+
+						if 'verbose' in useopts.keys() and useopts['verbose'] >= 2:
+							print ' GET new:',name,steplist[name]['isnew'],steplist[name]
+
+						newline = redoDataFile(item['line'],logsetname,steplist[name]['cur_path'],basepath,steplist[name]['hashes'],useopts)
+
+						if 'verbose' in useopts.keys() and useopts['verbose'] >= 2:
+							print '  - after redo:',steplist[name]['hashes'].keys()
+						Acompare = driveutils.decomposeFileLog(newline)
+						steplist[name]['cur_sha']=Acompare['sha']
+						steplist[name]['cur_mtype']=Acompare['mtype']
+						steplist[name]['cur_bsize']=Acompare['bytesize']
+						steplist[name]['line']=newline
+						if Acompare['mtype'] not in steplist[name]['hashes'].keys():
+							steplist[name]['hashes'][ Acompare['mtype'] ]=Acompare['sha']
 					else:
-						basepath = grabBasePath(logsetname,name,datasets)
-					newline = redoDataFile(item['line'],logsetname,steplist[name]['cur_path'],basepath,useopts)
-					Acompare = driveutils.decomposeFileLog(newline)
-					steplist[name]['cur_sha']=Acompare['sha']
-					steplist[name]['cur_mtype']=Acompare['mtype']
-					steplist[name]['cur_bsize']=Acompare['bytesize']
-					steplist[name]['line']=newline
+						steplist[name]['cur_sha']=steplist[name]['hashes'][ useopts['mtype'] ]
+						steplist[name]['cur_mtype']=useopts['mtype']
+
 
 def grabBasePath(logsetname,localdrive,datasets):
 	if logsetname in datasets['targets'].keys() and localdrive in datasets['targets'][logsetname].keys():
@@ -93,7 +165,7 @@ def grabBasePath(logsetname,localdrive,datasets):
 		basepath=drivepath.rstrip('/')+"/"+grouppath.rstrip('/').lstrip('/')+"/"
 	return basepath
 
-def redoDataFile(logline,logsetname,relativePath,basePath,useopts):
+def redoDataFile(logline,logsetname,relativePath,basePath,hashesdict,useopts):
 	filedata=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]*,\s*)\/',logline)[0]
 	filepath=re.findall(r'^\w+,\s*\d+,\s*\w[^,]*,\s*(\/.*\S)\s*$',logline)[0]
 
@@ -112,6 +184,13 @@ def redoDataFile(logline,logsetname,relativePath,basePath,useopts):
 	if mcheck == mopt:
 		newline = filedata+filepath+"\n"
 		return newline
+	elif mcheck in hashesdict.keys() and mopt in hashesdict.keys():
+		masdatabit1=re.findall(r'^\w+,(\s*\d+,)\s*\w[^,]*,\s*\/.*$',filedata)[0]
+		masdatabit2=re.findall(r'^\w+,\s*\d+,\s*(\w[^,]*),\s*\/.*$',filedata)[0]
+		mcheckdata['mtype']=mopt
+		masdata=hashesdict[mopt]+', '+masdatabit1+', '+driveutils.rebuildFileLogItemData(mcheckdata)+', '
+		newline = masdata+filepath+"\n"
+		return newline
 	else:
 		localpath=relativePath.lstrip('/')
 		#########################check if file exists in source, recalc data##############################
@@ -120,12 +199,30 @@ def redoDataFile(logline,logsetname,relativePath,basePath,useopts):
 		if basePath is not None:
 			dlpath=basePath.rstrip('/')+"/"+localpath
 		if dlpath is not None and os.path.isfile(dlpath):
-			infobjOld=driveutils.getFileInfo(dlpath,None,{'mtype':mcheck})
+			if mcheck in hashesdict.keys() and mopt in hashesdict.keys():
+				infobjOld={}
+				infobjOld['sha']=hashesdict[mcheck]
+				infobjOld['bytesize']=re.findall(r'^\w+,\s*(\d+),.*$',filedata)[0]
+			else:
+				if 'verbose' in useopts.keys() and useopts['verbose'] >= 2:
+					print '** getsha:getfile1 - ',hashesdict.keys(),mcheckdata,dlpath,mcheck,'(',mopt,')'
+				infobjOld=driveutils.getFileInfo(dlpath,None,{'mtype':mcheck})
+				hashesdict[mcheck]=infobjOld['sha']
 			mcheck2=re.findall(r'^(\w+),\s*\d+,.*$',filedata)[0]
 			mcheck3=re.findall(r'^\w+,\s*(\d+),.*$',filedata)[0]
+			if 'verbose' in useopts.keys() and useopts['verbose'] >= 2:
+				print '**          chk1 - ',infobjOld['sha'],mcheck2,infobjOld['bytesize'],mcheck3
 			if infobjOld['sha'] == mcheck2 and infobjOld['bytesize'] == mcheck3:
-				infobjNew=driveutils.getFileInfo(dlpath,None,{'mtype':mopt})
-				masdata=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]*,\s*)\/.*$',infobjNew['fulltext'])[0]
+				if mcheck in hashesdict.keys() and mopt in hashesdict.keys():
+					mcheckdata['mtype']=mopt
+					masdata=hashesdict[mopt]+", "+infobjOld['bytesize']+", "+driveutils.rebuildFileLogItemData(mcheckdata)+", "
+				else:
+					if 'verbose' in useopts.keys() and useopts['verbose'] >= 2:
+						print '** getsha:getfile2 - ',mcheckdata,dlpath,mopt
+					infobjNew=driveutils.getFileInfo(dlpath,None,{'mtype':mopt})
+					hashesdict[mopt]=infobjNew['sha']
+					masdata=re.findall(r'^(\w+,\s*\d+,\s*\w[^,]*,\s*)\/.*$',infobjNew['fulltext'])[0]
+
 		if masdata is not None:
 			newline = masdata+filepath+"\n"
 			return newline
@@ -133,7 +230,7 @@ def redoDataFile(logline,logsetname,relativePath,basePath,useopts):
 			newline = filedata+filepath+"\n"
 			return newline
 
-def pushMasterListToGroup(masterlist,logsetname,datasets,useopts=None):
+def pushMasterListToGroup(masterlist,readname,runname,logsetname,tmpfolder,datasets,useopts=None):
 	for name,item in masterlist.iteritems():
 		if name == "_newmaster":
 			continue
@@ -143,8 +240,10 @@ def pushMasterListToGroup(masterlist,logsetname,datasets,useopts=None):
 
 		reg = r'^[A-Za-z0-9]+, [0-9]+,'
 		if 'line' in item.keys():
-			if 'verbose' in useopts.keys() and useopts['verbose'] == True:
-				print 'y  ',item['line']
+			if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
+				print ' .y  ',item['line']
+			if 'verbose' in useopts.keys() and useopts['verbose'] >= 2:
+				print ' .x  ',name,masterlist[name]['hashes']
 			while re.search(reg,item['line']):
 #				if re.search(reg,item['line']):
 				l = item['line']
@@ -158,15 +257,16 @@ def pushMasterListToGroup(masterlist,logsetname,datasets,useopts=None):
 
 
 				if groupname != logsetname:
-					print '     .  . skip: ',groupname,'!=',logsetname,': ',Acompare['fullpath'].rstrip()
+					if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
+						print '     .  . skip: ',groupname,'!=',logsetname,': ',Acompare['fullpath'].rstrip()
 #						print 'skip: ',groupname, logsetname, name
-					incrementListed(masterlist,[name])
-					loadStepList(masterlist)
-					prepStepListVals(masterlist,logsetname,datasets,useopts)
+					incrementListed(masterlist,[name],useopts)
+					loadStepList(masterlist,useopts)
+					prepStepListVals(masterlist,readname,runname,logsetname,tmpfolder,datasets,useopts)
 				else:
 #						print 'up: ',groupname, logsetname, masterlist.keys()
-					loadStepList(masterlist)
-					prepStepListVals(masterlist,logsetname,datasets,useopts)
+					loadStepList(masterlist,useopts)
+					prepStepListVals(masterlist,readname,runname,logsetname,tmpfolder,datasets,useopts)
 					break
 
 
@@ -176,10 +276,6 @@ def comparePathsInLogSet(matches,filelist,useopts):
 	for sourcename,item in filelist.iteritems():
 		if 'cur_path' in item.keys():
 			curpath = item['cur_path']
-
-#			if 'verbose' in useopts.keys() and useopts['verbose'] == True:
-#				print '@ ',sourcename,item['pos'],curpath,item.keys()
-#				print '      ^',item['line']
 
 			if curpath is not None:
 				if curpath not in matches.keys():
@@ -199,20 +295,21 @@ def findLowestPath(matches,useopts):
 			lowest=n
 #		print
 
-	if 'verbose' in useopts.keys() and useopts['verbose'] == True:
-		print 'found: ',lowest
+	if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
+		print 'found lowest path: ',lowest
 
 	return lowest
 
 
 
-def buildCompSet(lowest,matches,compSET,masterlist):
+def buildCompSet(lowest,matches,compSET,masterlist,useopts):
 	compSET['_oldmaster']={}
 
 	compSET['_oldmaster']['state'] = 'missing'
 	compSET['_oldmaster']['cur_path'] = lowest
 
-	print "&&&&",masterlist["_oldmaster"].keys(),lowest,'==',masterlist["_oldmaster"]
+	if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
+		print " &&&&",lowest,"_oldmaster:",masterlist["_oldmaster"].keys(),'==',masterlist["_oldmaster"]
 	if 'cur_path' in masterlist["_oldmaster"].keys():
 		if lowest == masterlist["_oldmaster"]["cur_path"]:
 			compSET['_oldmaster']['state'] = 'present'
@@ -252,19 +349,20 @@ def addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets,useopts):
 
 
 		## IF the source has no cur_path (ie- it is missing?), add cur_path from its 'line'
-#		if 'verbose' in useopts.keys() and useopts['verbose'] == True:
-#			print 't  ',sourcename,lowest,sourceobj.keys(),sourceobj,compSET['_sources'][sourcename]['line']
 
 		if not 'cur_path' in sourceobj.keys() or sourceobj['cur_path'] is None:
 			reline = compSET['_sources'][sourcename]['line']
-			reline = re.findall("^\/(\/.*)\s*$",reline)
-			if reline is not None and len(reline)>0:
-				reline = reline[0]
-				if reline == lowest:
-					compSET['_sources'][sourcename]['cur_path'] = reline
+			reline2 = re.findall("\/(\/.+)\s*$",reline)
+			if reline2 is not None and len(reline2)>0:
+				reline2 = reline2[0]
+				if reline2 == lowest:
+					compSET['_sources'][sourcename]['cur_path'] = reline2
 				else:
-					print "FAK1", sourcename,lowest,reline,compSET['_sources'][sourcename]
+#					compSET['_sources'][sourcename]['cur_path'] = lowest
+					print "FAK1", sourcename,lowest,reline2,compSET['_sources'][sourcename]
 					sys.exit(0)
+
+
 #			else:
 #				compSET['_sources'][sourcename]['cur_path'] = lowest
 #				print "FAK2", sourcename,lowest,reline,compSET['_sources'][sourcename]
@@ -272,7 +370,7 @@ def addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets,useopts):
 		## IF the source has no cur_sha (ie- it is missing), add cur_sha from its 'line' OR mark the load err if the sha was ***ed
 		if not 'cur_sha' in sourceobj.keys() or sourceobj['cur_sha'] is None:
 			reline = compSET['_sources'][sourcename]['line']
-			reline = re.findall("^(.*?),",reline)
+			reline = re.findall(r"^(.*?),",reline)
 			if reline is not None and len(reline)>0:
 				reline = reline[0]
 				if re.search(r'^\s*([0-9a-zA-Z]+)\s*$',reline):
@@ -292,17 +390,21 @@ def addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets,useopts):
 		stateval = 'present'
 
 		if 'cur_path' not in compObj.keys() or compObj['cur_path'] != lowest:
-			print '(((1)))', compObj.keys(), lowest, '==',compObj
-			print '(((2)))', compSET['_oldmaster'].keys(), lowest,compSET['_oldmaster']
+
+			if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
+				print '(((1)))', compObj.keys(), lowest, '==',compObj
+				print '(((2)))', compSET['_oldmaster'].keys(), lowest,compSET['_oldmaster']
 			stateval = 'missing'
 		elif 'loadErr' in compObj.keys() and compObj['loadErr'] == True:
 			stateval = 'error'
 		elif 'cur_sha' not in compObj.keys():
 			stateval = 'error'
 		elif 'cur_sha' not in compSET['_oldmaster'].keys() or compSET['_oldmaster']['state'] == "missing":
-			print '(((3)))', compSET['_oldmaster'].keys(), lowest,compSET['_oldmaster']
-			print '(((4)))', compObj.keys(), lowest,compObj
+			if 'verbose' in useopts.keys() and useopts['verbose'] >= 1:
+				print '(((3)))', compSET['_oldmaster'].keys(), lowest,compSET['_oldmaster']
+				print '(((4)))', compObj.keys(), lowest,compObj
 			stateval = 'new'
+
 		elif compObj['cur_bsize'] != compSET['_oldmaster']['cur_bsize']:
 			stateval = 'conflict'
 		elif compObj['cur_sha'] != compSET['_oldmaster']['cur_sha']:
@@ -318,7 +420,7 @@ def addToCompSet(lowest,matches,compSET,steplist,logsetname,datasets,useopts):
 						failedLoadList = datasets['errset']['folderload'][logsetname][sourcename]
 						# check if the lowest path starts with a failed folder load from this setname and sourcename
 						for path in failedLoadList:
-							reline = re.findall("^.*?\/(\/.*)\s*$",path)
+							reline = re.findall(r"^.*?\/(\/.*)\s*$",path)
 							if reline is not None and len(reline)>0:
 								local_path = reline.rstrip('/')+'/'
 							if lowest.startswith(local_path) and logsetname is not None:
@@ -458,19 +560,22 @@ def summarizeCompSet(lowest,matches,compSET,steplist,logsetname,datasets):
 	compSET['_summary']['totalstates']=totalstates
 	compSET['_summary']['groupstates']=groupstates
 	compSET['_summary']['compset']=compset
+	compSET['_summary']['hashes']={}
+	compSET['_summary']['hashes'][mastermtype]=mastersha
 
-def incrementPtrs(shaset,steplist):
+def incrementPtrs(shaset,steplist,useopts):
 #		inclist=[]
 #		print
-#		for i,item in shaset.iteritems():
+	for name,item in steplist.iteritems():
+		steplist[name]['isnew']=False
 #			print 'add: ', i,isinstance(item,dict),item
 #			if isinstance(item,dict):
 #				inclist.append(i)
-	incrementListed(steplist,shaset)
+	incrementListed(steplist,shaset,useopts)
 
 
 
-def incrementListed(steplist,inclist):
+def incrementListed(steplist,inclist,useopts):
 #		print
 #		print '  inclist: ',inclist
 	for name in inclist:
@@ -479,10 +584,14 @@ def incrementListed(steplist,inclist):
 			if name == "_newmaster":
 				continue
 #				print '   . . ',steplist[name]['pos'],steplist[name]['obj'].tell()
+			if 'verbose' in useopts.keys() and useopts['verbose'] >= 2:
+				print ' .inc:',name,'increment',steplist[name]['pos'],'=>',steplist[name]['obj'].tell()
 			steplist[name]['pos']=steplist[name]['obj'].tell()
-
+			steplist[name]['isnew']=True
 
 def resetLogPos(logitem):
 	curpos=logitem['obj'].tell()
 	if curpos != logitem['pos']:
 		logitem['obj'].seek( logitem['pos'] )
+		return True
+	return False

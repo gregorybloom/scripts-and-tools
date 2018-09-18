@@ -122,7 +122,7 @@ def createDictSet(dictobj,buildarr,buildinfo=[]):
 
 	createDictSet(dictobj[groupname],buildarr,buildinfo)
 
-def createNewLog(logname, reuse=False):
+def createNewLog(logname, append=False):
 #	print '- '+logname
 
 	div = logname.find('/')
@@ -141,7 +141,7 @@ def createNewLog(logname, reuse=False):
 		except OSError as exception:
 #			if exception.errno != errno.EEXIST:
 			raise
-	if reuse:
+	if append:
 		fo = open( path +"/"+ logname, 'ab' )
 		fo.close()
 	else:
@@ -167,6 +167,12 @@ def sortLogByPath(logpath,order=3):
 #	print 'sorted: ',logpath
 
 
+def rebuildFileLogItemData(logitemobj):
+	parts=[]
+	for name,item in logitemobj.iteritems():
+		parts.append(name+":"+item)
+	str = '|'.join(parts)
+	return str
 
 def decomposeFileLogItemData(logitemstr):
 	Larray = []

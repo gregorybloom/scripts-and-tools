@@ -93,12 +93,12 @@ targetList['raid_backup']['foldersets']['m_unsortedset']['target3']='/RAID_BACKU
 
 #do_only=['servscriptset','miscset','m_recordingset','videoset']
 #do_only=['miscset','m_recordingset','m_bookset','m_musicset']
-do_only=['m_musicset']
-#do_only=['m_bookset']
-#do_only=['cloudset']
+do_only=['dataset','softset']
+do_only=['dataset']
+
 for k in targetList['raid_backup']['foldersets'].keys():
 	if k not in do_only:
-#		break
+		break
 		del targetList['raid_backup']['foldersets'][k]
 
 
@@ -108,11 +108,11 @@ runopts['walkopts']={}
 runopts['compopts']={}
 runopts['walkopts']['numthreads']=2
 runopts['walkopts']['useblocks'] = {}
-runopts['walkopts']['useblocks']['_all'] = 96
-runopts['walkopts']['useblocks']['m_bookset'] = 64
-runopts['walkopts']['useblocks']['projset'] = 160
-runopts['walkopts']['useblocks']['softset'] = 160
-runopts['walkopts']['useblocks']['videoset'] = 160
+runopts['walkopts']['useblocks']['_all'] = 160
+runopts['walkopts']['useblocks']['m_musicset'] = 96
+#runopts['walkopts']['useblocks']['m_bookset'] = 64
+#runopts['walkopts']['useblocks']['softset'] = 160
+#runopts['walkopts']['useblocks']['videoset'] = 160
 #runopts['walkopts']['printon']=10
 
 
@@ -146,8 +146,11 @@ if "_readname" in arglist:
 
 
 if "verbose" in arglist:
-#	runopts['walkopts']['verbose']=True
-	runopts['compopts']['verbose']=True
+	runopts['compopts']['verbose']=1
+if "vverbose" in arglist:
+	runopts['compopts']['verbose']=2
+if "vvverbose" in arglist:
+	runopts['compopts']['verbose']=3
 if "dropold" in arglist:
 	runopts['compopts']['justdropmissing']=True
 
