@@ -286,6 +286,7 @@ scanrsync() {
 
     echo -e "\n--------- $sourcepath ----------\n" >> "$tmperrfile.tmp"
     rm -f "$tmplog"
+    rm -f "$tmperrfile.tmp2"
     if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
       touch "$tmplog"
       echo -e "\n--------- $sourcepath ----------\n"
@@ -303,7 +304,9 @@ scanrsync() {
         basev+="vv"
       fi
       echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
-      eval "rsync $basev $extend --log-file='$tmplog' '$drivepath/$sourcepath' '$targetdrivepath/$targetpath'"
+      eval "rsync $basev $extend --log-file='$tmplog' '$drivepath/$sourcepath' '$targetdrivepath/$targetpath' 2>'$tmperrfile.tmp2'"
+
+      cat "$tmperrfile.tmp2"
       echo "rsync completed."
       touch "$tmplog"
 
@@ -335,12 +338,13 @@ scanrsync() {
       cat "$tmplog" >> "$RUNLOGPATH/rsync-$LOGSUFFIX"
     fi
 
-    if [ "$?" == "0" ]; then
+    if [ "$?" == "0" ] && [ ! -e "$tmperrfile.tmp2" ]; then
       echo "Successful rsync."
     else
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
+
       errlabel=$(getrsyncerrcode "$?")
       echo -e "------ $? : $errlabel : $sourcepath ------\n" >> "$tmperrfile.tmp"
       ################################################ ERRORED HERE, e/3
@@ -348,7 +352,6 @@ scanrsync() {
       echo "-- -- -- $? : $errlabel : $sourcepath" >> "$errdump"
     fi
 
-#    parseresult=$(grepRSyncFailure "$prefregstr" "$tmplog" "$tmperrfile.tmp")
     parseresult=$(grepRSyncFailure "$tmplog" "$tmperrfile.tmp")
     if echo "$parseresult" | grep -qP "fail_\d+"; then
       LOOP_ERROR_FAIL=true
@@ -356,8 +359,18 @@ scanrsync() {
       ERROR_FAIL=true
 
       echo "--$errdumpltr/4-- $sourcepath : $j" >> "$errdump"
-#      grepRSyncFailure "$prefregstr" "$tmplog" "$errdump"
       grepRSyncFailure "$tmplog" "$errdump"
+      echo "Errors detected."
+    fi
+    parseresult2=$(grepRSyncFailure "$tmplog" "$tmperrfile.tmp2")
+    if echo "$parseresult2" | grep -qP "fail_\d+"; then
+      LOOP_ERROR_FAIL=true
+      PRE_ERROR_FAIL=true
+      ERROR_FAIL=true
+
+      echo "--$errdumpltr/5-- $sourcepath : $j" >> "$errdump"
+      grepRSyncFailure "$tmplog" "$errdump"
+      echo "$tmperrfile.tmp2" >> "$errdump"
       echo "Errors detected."
     fi
     ############### DIFFERS AT THIS POINT
@@ -384,6 +397,9 @@ scanrsync() {
     if [ "$LOOP_ERROR_FAIL" == true ]; then
       if [ -f "$tmperrfile.tmp" ]; then
         cat "$tmperrfile.tmp" >> "$tmperrfile"
+      fi
+      if [ -f "$tmperrfile.tmp2" ]; then
+        cat "$tmperrfile.tmp2" >> "$tmperrfile"
       fi
     fi
     rm -f "$tmperrfile.tmp"
@@ -447,7 +463,7 @@ mailout() {
     else
       #      mail -s "$SUBJECT" "$USER" < "$outfile"
       if [ "$type" == "pre_error" ] || [ "$type" == "error" ]; then
-        cp -v "$outfile" "$drivepath/$type-$LOGSUFFIX"
+        cp -fv "$outfile" "$HOME/$type-$LOGSUFFIX"
         echo "$outfile"
       fi
     fi
@@ -625,7 +641,6 @@ if [ "$VALID_CHECK" == true ]; then
       # Save the validation logs
       rsync -hrltvvzWPSD --no-links --stats --no-compress --log-file="$tmpfile.x2" "$vbaselog" "$targetdrivepath/logs/"
 
-#      parseresult=$(grepRSyncFailure "$prefregstr" "$tmpfile.2" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX")
       parseresult=$(grepRSyncFailure "$tmpfile.x2" "$RUNLOGPATH/prelog_errs-$LOGSUFFIX")
       if echo "$parseresult" | grep -qP "fail_\d+"; then
         PRE_ERROR_FAIL=true
@@ -636,7 +651,6 @@ if [ "$VALID_CHECK" == true ]; then
         if echo "$parseresult" | grep -qP "fail_2"; then
           echo "--a/2-- $vbaselog,$p" >> "$ERRDUMP_FILEPATH"
         fi
-#        grepRSyncFailure "$prefregstr" "$tmpfile.2" "$ERRDUMP_FILEPATH"
         grepRSyncFailure "$tmpfile.x2" "$ERRDUMP_FILEPATH"
       fi
       rm -f "$tmpfile.x2"

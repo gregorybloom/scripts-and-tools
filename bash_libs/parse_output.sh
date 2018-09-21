@@ -168,17 +168,22 @@ grepRSyncFailure() {
   logresult="$2"
   touch "$thetmpfile"
   PRESUFF="(?:[\w\:\s\/]+\[\d+\]\s+)?"
+  if [ ! -e "$thetmpfile" ]; then
+    return
+  fi
+
   if grep -qP "^$PRESUFF\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$thetmpfile"; then
     grep -nP "^$PRESUFF\s*rsync\:.*\: Permission denied \(\d+\)\s*$" "$thetmpfile" >> "$logresult"
     echo -e "fail_1: permission denied\n"
-  fi
-  if grep -qP "^$PRESUFF\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$thetmpfile"; then
+  elif grep -qP "^$PRESUFF\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$thetmpfile"; then
     echo -e "fail_2: rsync: operation not permitted\n "
     grep -nP "^$PRESUFF\s*rsync\:.*\: Operation not permitted \(\d+\)\s*$" "$thetmpfile" >> "$logresult"
-  fi
-  if grep -qP "^rsync error\: error in file IO \(code 11\)" "$thetmpfile"; then
+  elif grep -qP "^rsync error\: error in file IO \(code 11\)" "$thetmpfile"; then
     echo -e "fail_3: error in file IO (code 11) (no space left on device?)"
     grep -nP "^rsync error\: error in file IO \(code 11\)" "$thetmpfile" >> "$logresult"
+  elif grep -qP "\brsync\: connection unexpectedly" "$thetmpfile"; then
+    echo -e "fail_4: rsync connection closed unexpectedly"
+    grep -nP "\brsync\: connection unexpectedly.*$" "$thetmpfile" >> "$logresult"
   fi
 
 
