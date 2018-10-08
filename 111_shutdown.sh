@@ -48,7 +48,7 @@ if [ "$HAS_SWAKS" == true ] && [ -f "$_HOMEFOLDER/.swaksrc" ]; then
   scrape_swaks_config "$_HOMEFOLDER/"
 
   sudo swaks --from "$SWAKFROM" --h-From "$_SWAKHFROM" -s "$SWAKPROTO" -tls -a LOGIN --auth-user "$SWAKUSER" --auth-password "$SWAKPASS" --header "Subject: POWER FAILURE AT $datetime" --body "Power Failed at $datetime" -t "$_ALERTEMAIL"
-  echo "sent to $_ALERTEMAIL." | wall
+  echo "sent to $_ALERTEMAIL."
   sleep 15
 fi
 
@@ -62,7 +62,7 @@ if echo "$SCRIPTDIR" | grep -qP "^\/media\/\w+\/"; then
 fi
 
 
-echo "Power failure imminent!  Try shutdown." | wall
+echo "Power failure imminent!  Try shutdown."
 sleep 10
 shutdown -h now
 sleep 10
@@ -80,5 +80,5 @@ if [ "$HAS_SWAKS" == true ] && [ -f "$_HOMEFOLDER/.swaksrc" ]; then
   scrape_swaks_config "$_HOMEFOLDER/"
 
   sudo swaks --from "$SWAKFROM" --h-From "$_SWAKHFROM" -s "$SWAKPROTO" -tls -a LOGIN --auth-user "$SWAKUSER" --auth-password "$SWAKPASS" --header "Subject: SHUTDOWN FAILURE AT $datetime" --body  "SHUTDOWN FAILURE AT $datetime" -t "$_ALERTEMAIL"
-  echo "sent to $_ALERTEMAIL." | wall
+  echo "sent to $_ALERTEMAIL."
 fi

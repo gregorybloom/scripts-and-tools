@@ -76,7 +76,7 @@ fi
 
 rm -rf "$deployfolder"
 mkdir -p "$deployfolder"
-rsync -a --no-links --exclude-from 'd_excludes.txt' "$path" "$deployfolder"
+rsync -a --no-links --exclude-from 'config/d_excludes.txt' "$path" "$deployfolder"
 chmod 755 -R "$deployfolder"
 
 if [[ "$path" = "./" ]]; then
@@ -88,9 +88,9 @@ fi
 
 
 if [[ "$isfolder" -eq 1 ]]; then
-	rsync --no-links --exclude-from 'd_excludes.txt' -e "ssh -p $_SERVER100_PORT -i $_SSHKEYPATH -o PreferredAuthentications=publickey" -avvzcWP --delete --delete-after --port="$_SERVER100_PORT" "$deployfolder/" "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_WEBPATH/$folderpath"
+	rsync --no-links --exclude-from 'config/d_excludes.txt' -e "ssh -p $_SERVER100_PORT -i $_SSHKEYPATH -o PreferredAuthentications=publickey" -avvzcWP --delete --delete-after --port="$_SERVER100_PORT" "$deployfolder/" "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_WEBPATH/$folderpath"
 else
-	rsync --no-links --exclude-from 'd_excludes.txt' -e "ssh -p $_SERVER100_PORT -i $_SSHKEYPATH -o PreferredAuthentications=publickey" -avvzcWP --port="$_SERVER100_PORT" "$deployfolder/" "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_WEBPATH/$folderpath"
+	rsync --no-links --exclude-from 'config/d_excludes.txt' -e "ssh -p $_SERVER100_PORT -i $_SSHKEYPATH -o PreferredAuthentications=publickey" -avvzcWP --port="$_SERVER100_PORT" "$deployfolder/" "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_WEBPATH/$folderpath"
 fi
 
 

@@ -24,13 +24,6 @@ hasfunct() {
     else
       true
     fi
-  elif [ "$testfn" == "wall" ]; then
-    $(wall > /dev/null 2>&1)
-    if [ "$?" -eq 127 ]; then
-      false
-    else
-      true
-    fi
   elif [ "$testfn" == "swaks" ]; then
    $(swaks --version > /dev/null 2>&1)
     if [ "$?" -eq 127 ]; then
@@ -43,18 +36,15 @@ hasfunct() {
 
 
 echo "Running: $SCRIPTPATH"
-if hasfunct "wall"; then
-  echo "Running: $SCRIPTPATH" | wall
-fi
-
 OPTS=`getopt -o vh: --long verbose,mountonly,force,help,email,dryrun,vcheck,preponly,verbose,sourcescript:,runtype: -n 'parse-options' -- "$@"`
+
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
 source "$SCRIPTDIR/config/autobackup_config.sh"
 source "$SCRIPTDIR/bash_libs/scrape_swaks.sh"
 source "$SCRIPTDIR/bash_libs/lock_and_tmp_files.sh"
-source "$SCRIPTDIR/bash_libs/handle_mounts.sh"
 source "$SCRIPTDIR/bash_libs/parse_output.sh"
+source "$SCRIPTDIR/bash_libs/handle_mounts.sh"
 
 # https://unix.stackexchange.com/questions/102211/rsync-ignore-owner-group-time-and-perms
 
@@ -284,10 +274,13 @@ scanrsync() {
       errdumpltr="e"
     fi
 
+    rm -f "$tmperrfile.tmp"
+    touch "$tmperrfile.tmp"
     echo -e "\n--------- $sourcepath ----------\n" >> "$tmperrfile.tmp"
     rm -f "$tmplog"
     rm -f "$tmperrfile.tmp2"
     if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
+
       touch "$tmplog"
       echo -e "\n--------- $sourcepath ----------\n"
 #     c, D, z
@@ -303,10 +296,10 @@ scanrsync() {
       if [ "$BACKUP_VERBOSE" == true ]; then
         basev+="vv"
       fi
+
       echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
       eval "rsync $basev $extend --log-file='$tmplog' '$drivepath/$sourcepath' '$targetdrivepath/$targetpath' 2>'$tmperrfile.tmp2'"
 
-      cat "$tmperrfile.tmp2"
       echo "rsync completed."
       touch "$tmplog"
 
@@ -320,6 +313,7 @@ scanrsync() {
       echo "--$errdumpltr/1-- $sourcepath : $j" >> "$errdump"
       echo "-- -- -- $drivepath/$sourcepath" >> "$errdump"
     elif [ ! -e "$targetdrivepath/$targetpath" ]; then
+
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
@@ -338,7 +332,8 @@ scanrsync() {
       cat "$tmplog" >> "$RUNLOGPATH/rsync-$LOGSUFFIX"
     fi
 
-    if [ "$?" == "0" ] && [ ! -e "$tmperrfile.tmp2" ]; then
+
+    if [ "$?" == "0" ] && [ ! -s "$tmperrfile.tmp2" ]; then
       echo "Successful rsync."
     else
       LOOP_ERROR_FAIL=true
@@ -348,6 +343,8 @@ scanrsync() {
       errlabel=$(getrsyncerrcode "$?")
       echo -e "------ $? : $errlabel : $sourcepath ------\n" >> "$tmperrfile.tmp"
       ################################################ ERRORED HERE, e/3
+      echo "--$errdumpltr/3-- $j" >> "$tmperrfile.tmp"
+      echo "-- -- -- $? : $errlabel : $sourcepath" >> "$tmperrfile.tmp"
       echo "--$errdumpltr/3-- $j" >> "$errdump"
       echo "-- -- -- $? : $errlabel : $sourcepath" >> "$errdump"
     fi
@@ -358,6 +355,8 @@ scanrsync() {
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
 
+      echo "--$errdumpltr/4-- $sourcepath : $j" >> "$tmperrfile.tmp"
+      grepRSyncFailure "$tmplog" "$tmperrfile.tmp"
       echo "--$errdumpltr/4-- $sourcepath : $j" >> "$errdump"
       grepRSyncFailure "$tmplog" "$errdump"
       echo "Errors detected."
@@ -368,6 +367,8 @@ scanrsync() {
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
 
+      echo "--$errdumpltr/5-- $sourcepath : $j" >> "$tmperrfile.tmp2"
+      grepRSyncFailure "$tmplog" "$tmperrfile.tmp2"
       echo "--$errdumpltr/5-- $sourcepath : $j" >> "$errdump"
       grepRSyncFailure "$tmplog" "$errdump"
       echo "$tmperrfile.tmp2" >> "$errdump"
@@ -409,6 +410,7 @@ mailout() {
   type="$1"
   outfile="$RUNLOGPATH/log_tmp-$LOGSUFFIX"
   rm -f "$outfile"
+
   SUBJECT=""
   if [ "$type" == "locked" ]; then
     mkdir -p "$RUNLOGPATH"
@@ -428,11 +430,13 @@ mailout() {
     fi
   elif [ "$type" == "error" ]; then
     SUBJECT="autobkup-ERROR: $thedate1 $RUN_TYPE"
-    fileone="$RUNLOGPATH/log_errs-$LOGSUFFIX"
-    fileone2="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+    fileone="$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+    fileone2="$RUNLOGPATH/log_errs-$LOGSUFFIX"
     echo -e "$SUBJECT\n" > "$outfile"
     echo -e "$thedate1  =  $thedate2\n" >> "$outfile"
     cat "$fileone" >> "$outfile"
+    echo "--------------------" >> "$outfile"
+    echo "--------------------" >> "$outfile"
     cat "$fileone2" >> "$outfile"
   elif [ "$type" == "prep_only" ]; then
     SUBJECT="autobkup-PREP SUMMARY: $thedate1 $RUN_TYPE"
@@ -449,6 +453,7 @@ mailout() {
     echo "SENDING"
   fi
   if [ -f "$outfile" ]; then
+
     if [ "$type" == "pre_error" ] || [ "$type" == "error" ]; then
       echo -e "============================\n" > "$_BANNERFILE"
       echo "$SUBJECT" >> "$_BANNERFILE"
@@ -459,7 +464,7 @@ mailout() {
       scrape_swaks_config "$_HOMEFOLDER/"
 
       sudo swaks --from "$SWAKFROM" --h-From "$_SWAKHFROM" -s "$SWAKPROTO" -tls -a LOGIN --auth-user "$SWAKUSER" --auth-password "$SWAKPASS" --header "Subject: $SUBJECT" --body "$outfile" -t "$_ALERTEMAIL"
-      echo "sent to $_ALERTEMAIL." | wall
+      echo "sent to $_ALERTEMAIL."
     else
       #      mail -s "$SUBJECT" "$USER" < "$outfile"
       if [ "$type" == "pre_error" ] || [ "$type" == "error" ]; then
@@ -482,13 +487,16 @@ DRY_RUN=false
 IGNORE_ERRS=false
 USE_EMAIL=false
 
-
+echo "Loading Options"
 loadopts
+echo "Check Run Data"
 loadrundata
 #####################################################################
 HAS_BLOCKID=true
 HAS_MAIL=true
 HAS_SWAKS=true
+
+echo "Check functions"
 
 if ! hasfunct "blockid"; then
   HAS_BLOCKID=false

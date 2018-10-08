@@ -123,6 +123,7 @@ verifydriveflags() {
     if [ "$DRIVE_FLAG" == false ]; then
       continue
     fi
+    echo "$opath,$path,$type,$DRIVE_FLAG"
     echo "$opath,$path,$type,$DRIVE_FLAG" >> "$runtmppath/mounted.txt"
   done
 }

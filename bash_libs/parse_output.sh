@@ -34,8 +34,8 @@ parsersync() {
   touch "$parsefile"
   PRESUFF="(?:[\w\:\s\/]+\[\d+\]\s+)?"
   if grep -qP "^$PRESUFF\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile"; then
-    echo "parsing 'a'"
     grep -P "^$PRESUFF\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile" > "$parsefile.2"
+
     for g in $(cat "$parsefile.2"); do
       nv=$(grep -nP "^$PRESUFF\s*total\:\s+matches=\d+\s+hash_hits=\d+\s+false_alarms=\d+\s+data=\d+\s*$" "$parsefile")
       nval=$(echo "$nv" | grep -oP "^\d+(?=\:)")
@@ -56,10 +56,10 @@ parsersync() {
     done
     rm -f "$parsefile.2"
   elif grep -qP "^$PRESUFF\s*Number of files\:\s+[\d\.\,]+\s+\(reg\:\s+[\d\.\,]+\,\s+dir\:\s+[\d\.\,]+\)" "$parsefile"; then
-    echo "parsing 'b'"
     nv2=$(grep -nP "^$PRESUFF\s*Number of files\:\s*[\d\.\,]+\s*\(reg\:\s*[\d\.\,]+,\s*dir\:\s*[\d\.\,]+\)\s*$" "$parsefile")
     nval2=$(echo "$nv2" | grep -oP "^\d+(?=\:)")
 
+    rm -f "$parsefile.2"
     tail "-n+$nval2" "$parsefile" >> "$parsefile.2"
     for h in $(cat "$parsefile.2"); do
       if echo "$h" | grep -qP "^\d+(?:\/\d+)+\s+\d+(?:\:\d+)+\s+\[\d+\]\s+(?:[Tt]otal|Number of|Literal data|Matched data|sent)"; then

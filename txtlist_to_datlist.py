@@ -4,7 +4,7 @@ import csv
 
 
 ## converter for ip blocklsists
-# reads all files in tmp/, concats them together, and then sorts their contents by format and convertsN
+# reads all files in tmp/, concats them together, and then sorts their contents by format and converts
 
 # CLEAR TMP FILES AND PAST RESULTS
 tmpfolder="tmp/"

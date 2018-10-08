@@ -8,4 +8,4 @@ if [ -d "retrieve" ]; then
 fi
 
 
-rsync --exclude-from 'r_excludes.txt' --temp-dir='retrieve' -e "ssh -i $_SSHKEYPATH -o PreferredAuthentications=publickey -p $_SERVER100_PORT" --delete --delete-after -avvzcWP --port="$_SERVER100_PORT" "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_WEBPATH/" .
+rsync --exclude-from 'config/r_excludes.txt' --temp-dir='retrieve' -e "ssh -i $_SSHKEYPATH -o PreferredAuthentications=publickey -p $_SERVER100_PORT" --delete --delete-after -avvzcWP --port="$_SERVER100_PORT" "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_WEBPATH/" .

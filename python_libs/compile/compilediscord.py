@@ -28,12 +28,14 @@ def parseTimeObj(postobjtime):
     timeobj['month']=monthToNum(postobjtime[1])
 
     timeobj['year']='20'+postobjtime[2]
-    timeobj['hour']=postobjtime[3]
-    if timeobj['hour'] != '12' and postobjtime[5] == "P":
-        timeobj['hour'] = str(  int(timeobj['hour'])+12  )
-    if timeobj['hour'] == '12' and postobjtime[5] == "A":
-        timeobj['hour'] = '00'
-    timeobj['minute']=postobjtime[4]
+
+    if len(postobjtime) > 3:
+        timeobj['hour']=postobjtime[3]
+        if timeobj['hour'] != '12' and postobjtime[5] == "P":
+            timeobj['hour'] = str(  int(timeobj['hour'])+12  )
+        if timeobj['hour'] == '12' and postobjtime[5] == "A":
+            timeobj['hour'] = '00'
+        timeobj['minute']=postobjtime[4]
 
     if timeobj['month'] < 10:
         timeobj['month'] = '0'+str(timeobj['month'])
@@ -61,45 +63,13 @@ def getOldestString(oldesttimestr,newesttimestr):
 def stringOverlapLength(a, b):
     return max(i for i in range(len(b)+1) if a.endswith(b[:i]))
 
-def gatherLogListWalk(logfolder,matchkeys={},servername=None):
-    filelist = driveutils.readDir(logfolder)
-    filelist.sort()
-    for filename in filelist:
-        if os.path.isdir(logfolder+"/"+filename) and re.match("^\d{8}_\d{6}\s*$",filename):
-            gatherLogListWalk(logfolder+"/"+filename,matchkeys,servername)
-        elif os.path.isdir(logfolder+"/"+filename):
-            gatherLogListWalk(logfolder+"/"+filename,matchkeys,filename)
-        elif os.path.isfile(logfolder+"/"+filename) and re.match(".*\.txt$",filename):
-            if servername not in matchkeys.keys():
-                matchkeys[servername]={}
-            keyid=re.findall("(.*)\.txt$",filename)[0]
-            if keyid not in matchkeys[servername].keys():
-                matchkeys[servername][keyid]=[]
-            matchkeys[servername][keyid].append(logfolder+"/"+filename)
-    return matchkeys
 
-def segmentLog(logset,overallfolderpath,outputfolder,username,servername,channelname):
-    outputpath=outputfolder+"pieces/"+username+"/"+servername+"/"+channelname+"/"
-    if not os.path.exists(outputpath):
-        os.makedirs(outputpath)
-
-    oldesttimestr=None
-    for logitem in logset:
-        if os.path.exists(logitem):
-            print 'segment: ',logitem
-            dname=re.findall("^.*discordexport\/tmp\/([^\/]+)\/.*$",logitem)[0]
-            if username == dname:
-                testtimestr=segmentLogPieces(logitem,outputpath,username,servername,channelname)
-                oldesttimestr=getOldestString(testtimestr,oldesttimestr)
-    return oldesttimestr
-
-def rebuildLogs(overallfolderpath,outputfolder,username,servername,channelname,outputpath):
-    segmentspath=outputfolder+"segments/"+username+"/"+servername+"/"+channelname+"/"
+def rebuildLogs(overallfolderpath,tmpoutputfolder,username,servername,channelname):
+    segmentspath=tmpoutputfolder+"tmp/segments/"+username+"/"+servername+"/"+channelname+"/"
     discordlogs=overallfolderpath+"discordlogs/"+username+"/"+servername+"/"+channelname+"/"
     if not os.path.exists(discordlogs):
         os.makedirs(discordlogs)
 
-    print 'start build: ',segmentspath
     filelist = driveutils.readDir(segmentspath)
     filelist.sort()
 
@@ -108,9 +78,9 @@ def rebuildLogs(overallfolderpath,outputfolder,username,servername,channelname,o
         if os.path.isdir(folderpath) and re.match("^\d{8}\s*$",timefolder):
 
             d=re.findall("^(\d{4})(\d\d)(\d\d)\s*$",timefolder)[0]
-            newlogpath=discordlogs+d[0]+"_"+d[1]+"_"+d[2]+".html"
+            newlogpath=discordlogs+d[0]+"_"+d[1]+"_"+d[2]+".html.bak"
             driveutils.createNewLog(newlogpath,False)
-            print ' - build: ',d[0]+"_"+d[1]+"_"+d[2]+".html"
+            print ' - build: '+discordlogs+d[0]+"_"+d[1]+"_"+d[2]+".html"
 
             loglist = driveutils.readDir(folderpath)
             loglist.sort()
@@ -136,8 +106,14 @@ def rebuildLogs(overallfolderpath,outputfolder,username,servername,channelname,o
                 bodypiecelog.write(dataB.rstrip()+"\n")
             bodypiecelog.close()
 
+            targetlogpath=discordlogs+d[0]+"_"+d[1]+"_"+d[2]+".html"
+            if os.path.isfile(targetlogpath):
+                os.remove(targetlogpath)
+            shutil.copyfile(newlogpath,targetlogpath)
+            os.remove(newlogpath)
 
-def overlapLogPieces(outputfolder,username,servername,channelname,outputpath):
+
+def overlapLogPieces(tmpoutputfolder,username,servername,channelname,outputpath):
     def writeOverlapClip(logpath,dataStr):
         bodypiecelog = open(logpath, 'a')
         bodypiecelog.write("---------------------------INSERT CLIP-------------------------------\n")
@@ -153,19 +129,19 @@ def overlapLogPieces(outputfolder,username,servername,channelname,outputpath):
 
         if overlapABav == 0 and overlapBAav == 0 and len(dataB) != 0:
             writeOverlapClip(newlogpath,dataB)
-            print logitem, 'insert clip', len(dataB)
+#            print logitem, 'insert clip', len(dataB)
             return 'carry on'
         elif overlapABav == overlapBAav and overlapABav == len(dataBav):
-            print logitem, 'skip over Aav', overlapABav, overlapBAav, 'len: ',len(dataB),len(dataBav)
+#            print logitem, 'skip over Aav', overlapABav, overlapBAav, 'len: ',len(dataB),len(dataBav)
             return 'skip over'
         elif overlapABav > overlapBAav and overlapABav == len(dataBav):
-            print logitem, 'skip over Bav', overlapABav, overlapBAav, 'len: ',len(dataB),len(dataBav)
+#            print logitem, 'skip over Bav', overlapABav, overlapBAav, 'len: ',len(dataB),len(dataBav)
             return 'skip over'
         elif overlapABav < overlapBAav and overlapBAav == len(dataBav):
-            print logitem, 'skip over Cav', overlapABav, overlapBAav, 'len: ',len(dataB),len(dataBav)
+#            print logitem, 'skip over Cav', overlapABav, overlapBAav, 'len: ',len(dataB),len(dataBav)
             return 'skip over'
         elif overlapABav > overlapBAav:
-            print logitem, 'append to end (av)', overlapABav, overlapBAav, 'len: ', len(dataBav), ' onto ', len(dataAav)
+#            print logitem, 'append to end (av)', overlapABav, overlapBAav, 'len: ', len(dataBav), ' onto ', len(dataAav)
 
             # Fetch the INTERSECTION REGION's msg-avatar SRC contents
             Apreoverlap = len(dataAav) - overlapABav
@@ -185,10 +161,10 @@ def overlapLogPieces(outputfolder,username,servername,channelname,outputpath):
                 bodypiecelog.write(dataB[overlapABsub:])
                 bodypiecelog.close()
             else:
-                print logitem, 'insert clip (append to end fail)', len(dataB)
+#                print logitem, 'insert clip (append to end fail)', len(dataB)
                 return 'write overlap'
         else:
-            print logitem, 'append to start (av)', overlapABav, overlapBAav, 'len: ', len(dataBav), ' onto ', len(dataAav)
+#            print logitem, 'append to start (av)', overlapABav, overlapBAav, 'len: ', len(dataBav), ' onto ', len(dataAav)
 
             # Fetch the INTERSECTION REGION's msg-avatar SRC contents
             Bpreoverlap = len(dataBav) - overlapBAav
@@ -217,11 +193,13 @@ def overlapLogPieces(outputfolder,username,servername,channelname,outputpath):
                 shutil.copyfile(newlogpath+".2",newlogpath)
                 os.remove(newlogpath+".2")
             else:
-                print logitem, 'insert clip (append to start fail)', len(dataB)
+#                print logitem, 'insert clip (append to start fail)', len(dataB)
                 return 'write overlap'
         return 'carry on'
 
-    segmentspath=outputfolder+"segments/"+username+"/"+servername+"/"+channelname+"/"
+    segmentspath=tmpoutputfolder+"tmp/segments/"+username+"/"+servername+"/"+channelname+"/"
+    clearTmpFolders(segmentspath,True)
+
     if not os.path.exists(segmentspath):
         os.makedirs(segmentspath)
 
@@ -234,7 +212,7 @@ def overlapLogPieces(outputfolder,username,servername,channelname,outputpath):
     if os.path.isfile(outputpath+"footer.txt"):
         shutil.copyfile(outputpath+"footer.txt",segmentspath+"footer.txt")
 
-    print 'start merge: ',outputpath
+#    print 'start merge: ',outputpath
     filelist = driveutils.readDir(outputpath)
     filelist.sort()
 
@@ -245,7 +223,7 @@ def overlapLogPieces(outputfolder,username,servername,channelname,outputpath):
             loglist = driveutils.readDir(folderpath)
             loglist.sort()
 
-            print ' - merge: ',timefolder
+#            print ' - merge: ',timefolder
             for logitem in loglist:
                 logpath = outputpath+"/"+timefolder+"/"+logitem
                 if os.path.isfile(logpath) and re.match("^\d{4}\.\d+\.txt\s*$",logitem):
@@ -283,21 +261,21 @@ def overlapLogPieces(outputfolder,username,servername,channelname,outputpath):
                                 writeOverlapClip(newlogpath,dataB)
 
                         elif overlapAB == overlapBA and overlapAB == len(dataB):
-                            print logitem, 'skip over A', overlapAB, overlapBA, 'len: ', len(dataB)
+#                            print logitem, 'skip over A', overlapAB, overlapBA, 'len: ', len(dataB)
                             continue
                         elif overlapAB > overlapBA and overlapAB == len(dataB):
-                            print logitem, 'skip over B', overlapAB, overlapBA, 'len: ', len(dataB)
+#                            print logitem, 'skip over B', overlapAB, overlapBA, 'len: ', len(dataB)
                             continue
                         elif overlapAB < overlapBA and overlapBA == len(dataB):
-                            print logitem, 'skip over C', overlapAB, overlapBA, 'len: ', len(dataB)
+#                            print logitem, 'skip over C', overlapAB, overlapBA, 'len: ', len(dataB)
                             continue
                         elif overlapAB > overlapBA:
-                            print logitem, 'append to end', overlapAB, overlapBA, 'len: ', len(dataB), ' onto ', len(dataA)
+#                            print logitem, 'append to end', overlapAB, overlapBA, 'len: ', len(dataB), ' onto ', len(dataA)
                             bodypiecelog = open(newlogpath, 'a')
                             bodypiecelog.write(dataB[overlapAB:])
                             bodypiecelog.close()
                         else:
-                            print logitem, 'append to start', overlapAB, overlapBA, 'len: ', len(dataB), ' onto ', len(dataA)
+#                            print logitem, 'append to start', overlapAB, overlapBA, 'len: ', len(dataB), ' onto ', len(dataA)
                             if os.path.isfile(newlogpath+".2"):
                                 os.remove(newlogpath+".2")
 
@@ -310,209 +288,15 @@ def overlapLogPieces(outputfolder,username,servername,channelname,outputpath):
                             shutil.copyfile(newlogpath+".2",newlogpath)
                             os.remove(newlogpath+".2")
 
-def killOldestLogPieces(outputpath,oldesttimestr):
-    if oldesttimestr is None:
-        return
-    timeobj=parseTimeObj(oldesttimestr)
-
-
-    print 'start oldestkill: ',outputpath
-    filelist = driveutils.readDir(outputpath)
-    filelist.sort()
-
-    killFolderList=[]
-    for timefolder in filelist:
-        folderpath = outputpath+"/"+timefolder
-        if os.path.isdir(folderpath) and re.match("^\d{8}\s*$",timefolder):
-            s=re.findall("^(\d{4})(\d\d)(\d\d)\s*$",timefolder)[0]
-            s0=int(s[0])
-            s1=int(s[1])
-            s2=int(s[2])
-            foldertimeobj={'year':s0,'month':s1,'day':s2}
-            killThis=False
-            compareset=['year','month','day']
-            for timetype in compareset:
-                if foldertimeobj[timetype] < int(timeobj[timetype]):
-                    killThis=True
-                    break
-                if foldertimeobj[timetype] > int(timeobj[timetype]):
-                    break
-            if killThis:
-                killFolderList.append(folderpath)
-    for folderpath in killFolderList:
-        try:
-            print " - remove old directory: ",folderpath
-            shutil.rmtree(folderpath)
-        except OSError as exception:
-            print '** err on '+str(exception)
-
-def killDupeLogPieces(outputpath):
-    print 'start dupekill: ',outputpath
-    filelist = driveutils.readDir(outputpath)
-    filelist.sort()
-
-    for timefolder in filelist:
-        folderpath = outputpath+"/"+timefolder
-        if os.path.isdir(folderpath) and re.match("^\d{8}\s*$",timefolder):
-            loglist = driveutils.readDir(folderpath)
-            loglist.sort()
-
-            a=0
-            killAlist={}
-            print ' - dupekill check: ',folderpath
-            for logitem in loglist:
-                logpath = outputpath+"/"+timefolder+"/"+logitem
-                if os.path.isfile(logpath) and re.match("^\d{4}\.\d+\.txt\s*$",logitem):
-                    s=re.findall("^(\d{4})\.(\d+)\.txt\s*$",logitem)[0]
-                    s0=int(s[0])
-                    s1=int(s[1])
-                    # If the current log is already in the kill list, don't compare it for dupes
-                    if s0 in killAlist.keys() and s1 in killAlist[s0].keys():
-                        continue
-
-                    for b in range((a+1), len(loglist) ):
-                        logitem2 = loglist[b]
-                        logpath2 = outputpath+"/"+timefolder+"/"+logitem2
-                        if os.path.isfile(logpath2) and re.match("^\d{4}\.\d+\.txt\s*$",logitem2):
-                            t=re.findall("^(\d{4})\.(\d+)\.txt\s*$",logitem2)[0]
-                            t0=int(t[0])
-                            t1=int(t[1])
-                            if s0 == t0 and logpath != logpath2:
-                                if t0 not in killAlist.keys() or t1 not in killAlist[t0].keys():
-                                    if filecmp.cmp(logpath, logpath2):
-                                        if t0 not in killAlist.keys():
-                                            killAlist[t0]={}
-                                        killAlist[t0][t1]=logpath2
-                a=a+1
-
-            sortedkeysA = killAlist.keys()
-            sortedkeysA.sort()
-            for a in sortedkeysA:
-                sortedkeysB = killAlist[a].keys()
-                sortedkeysB.sort()
-                for b in sortedkeysB:
-                    itemB = killAlist[a][b]
-                    os.remove(itemB)
-
-def segmentLogPieces(logitem,outputpath,username,servername,channelname):
-
-    def writePostObject(postobj,outputpath):
-        timeobj=parseTimeObj(postobj['time'])
-
-        folderpath = outputpath + timeobj['year']+timeobj['month']+timeobj['day']+"/"
-        if not os.path.exists(folderpath):
-            os.makedirs(folderpath)
-        filepath = folderpath+timeobj['hour']+timeobj['minute']
-
-        c=0
-        while os.path.exists(filepath+"."+str(c)+".txt"):
-            c=c+1
-
-        curtimestr = timeobj['year']+timeobj['month']+timeobj['day']+"_"+timeobj['hour']+timeobj['minute']
-        if postobj['last'] is None or postobj['last'] != curtimestr:
-            c=c
-            postobj['last']=curtimestr
-            postobj['lastc']=c
-        else:
-            c=postobj['lastc']
-
-        filepath = filepath+"."+str(c)+".txt"
-
-        driveutils.createNewLog(filepath,True)
-        bodypiecelog = open(filepath, 'a')
-        for line in postobj['contents']:
-            bodypiecelog.write(line.rstrip()+"\n")
-        bodypiecelog.close()
-
-
-
-    driveutils.createNewLog(outputpath+"/header.txt",False)
-    headerlog = open(outputpath+"/header.txt", 'a')
-
-    driveutils.createNewLog(outputpath+"/footer.txt",False)
-    footerlog = open(outputpath+"/footer.txt", 'a')
-
-    filemode="header"
-    readmode="open"
-
-    lasttimestr=None
-    oldesttimestr=None
-    postcount=0
-    objreader={'contents':[],'text':[],'last':lasttimestr}
-    with open(logitem,'rb') as f:
-        for rline in f.readlines():
-            if filemode!="footer" and re.match("^\s*<\/body>\s*$",rline):
-
-                if readmode == "writing":
-                    # save last posts, and remove trailing divs (cannot locate these reliably during loading)
-                    if 'content' in objreader.keys() and len(objreader['contents']) > 2:
-                        if re.match("^\s*<\/div>\s*$",objreader['contents'][-1]):
-                            del objreader['contents'][-1]
-                        if re.match("^\s*<\/div>\s*$",objreader['contents'][-1]):
-                            del objreader['contents'][-1]
-                    oldesttimestr=getOldestString(objreader['time'],oldesttimestr)
-                    writePostObject(objreader,outputpath)
-                    lasttimestr=objreader['last']
-                    postcount=postcount+1
-
-
-                footerlog.write("</div>\n</div>\n")
-                filemode="footer"
-
-            if filemode=="header":
-                headerlog.write(rline.rstrip()+"\n")
-            if filemode=="footer":
-                footerlog.write(rline.rstrip()+"\n")
-            if filemode=="body":
-                if readmode == "open":
-                    if re.match("^\s*<div class=\"msg\">\s*$",rline):
-                        objreader={'contents':[],'text':[],'last':lasttimestr}
-                        readmode = "writing"
-
-                    objreader['contents'].append(rline.rstrip())
-                elif readmode == "writing":
-                    if re.match("^\s*<div class=\"msg\">\s*$",rline):
-                        oldesttimestr=getOldestString(objreader['time'],oldesttimestr)
-                        writePostObject(objreader,outputpath)
-                        lasttimestr=objreader['last']
-                        postcount=postcount+1
-                        objreader={'contents':[],'text':[],'last':lasttimestr,'lastc':objreader['lastc']}
-
-                    if re.match("<span class=\"msg\-date\">[^\<\>]+<\/span>",rline):
-                        parts=re.findall("(?<=\"msg\-date\">)(\d\d)\-(\w+)-(\d\d) (\d\d)\:(\d\d) ([AP])M(?=<)",rline)
-                        objreader['time']=parts[0]
-                    if re.match("<span class=\"msg\-user\" title=.*<\/span>",rline):
-                        parts=re.findall("<span class=\"msg\-user\" title=\"([^\"\<\>]+\#\d+)\">([^\"\<\>]+)<\/span>",rline)
-                        objreader['user']=parts[0]
-                    if re.match("<div class=\"msg\-content\">",rline):
-                        objreader['text'].append(rline.rstrip())
-                        readmode = "savetext"
-
-                    objreader['contents'].append(rline.rstrip())
-                elif readmode == "savetext":
-                    if re.match(".*<\/div>\s*$",rline):
-                        readmode = "writing"
-                    objreader['text'].append(rline.rstrip())
-                    objreader['contents'].append(rline.rstrip())
-
-
-            if filemode=="header" and re.match("^\s*<div id=\"log\">\s*$",rline):
-                filemode="body"
-
-    f.close()
-    headerlog.close()
-    footerlog.close()
-    if postcount > 1000:
-        return oldesttimestr
-    return None
-
 def archiveLogs(logset,archivepath,outputfolder):
+    return
+    # CURRENTLY DEFUNCT
     if not os.path.exists(archivepath):
         os.makedirs(archivepath)
 
     for logitem in logset:
         if os.path.exists(logitem):
-            namepieces=re.findall("^.*\/tmp\/[^\/]+\/+(\d{8}_\d{6})\/[^\/]+\/([^\/]+)\.txt\s*$",logitem)[0]
+            namepieces=re.findall("^.*\/tmp\/exported\/[^\/]+\/+(\d{8}_\d{6})\/[^\/]+\/([^\/]+)\.txt\s*$",logitem)[0]
             filename=namepieces[1]+"-"+namepieces[0]+".txt"
 
             if not os.path.exists(archivepath+filename):
@@ -535,63 +319,261 @@ def archiveLogs(logset,archivepath,outputfolder):
                         cleanList.append(filepath2)
         a=a+1
     for path in cleanList:
-        print "removing: ", path
         os.remove(path)
 
-def clearEmptyTmps(outputfolder,username):
-    def walkAndClear(path):
-        filelist = driveutils.readDir(path)
-        if len(filelist) == 0:
-            try:
-                print "remove empty directory: ",path
-                shutil.rmtree(path)
-            except OSError as exception:
-                print '** err on '+str(exception)
+def clearTmpFolders(folderpath,rebuild):
+    try:
+        if os.path.exists(folderpath):
+#            print " - remove old directory: ",folderpath
+            shutil.rmtree(folderpath)
+    except OSError as exception:
+        print '** err on '+str(exception)
+    if rebuild:
+        if not os.path.exists(folderpath):
+            os.makedirs(folderpath)
+
+
+def writePostObject(postobj,outputpath):
+    timeobj=parseTimeObj(postobj['time'])
+
+    folderpath = outputpath + timeobj['year']+timeobj['month']+timeobj['day']+"/"
+    if not os.path.exists(folderpath):
+        os.makedirs(folderpath)
+
+    filepath = folderpath+timeobj['hour']+timeobj['minute']
+
+    c=0
+    while os.path.exists(filepath+"."+str(c)+".txt"):
+        c=c+1
+
+    curtimestr = timeobj['year']+timeobj['month']+timeobj['day']+"_"+timeobj['hour']+timeobj['minute']
+    if postobj['last'] is None or postobj['last'] != curtimestr:
+        c=c
+        postobj['last']=curtimestr
+        postobj['lastc']=c
+    else:
+        c=postobj['lastc']
+
+    filepath = filepath+"."+str(c)+".txt"
+
+    driveutils.createNewLog(filepath,True)
+    bodypiecelog = open(filepath, 'a')
+    for line in postobj['contents']:
+        bodypiecelog.write(line.rstrip()+"\n")
+    bodypiecelog.close()
+
+def divideUpLog(logitem,outputpath,username,servername,channelname):
+    driveutils.createNewLog(outputpath+"/header.txt",False)
+    headerlog = open(outputpath+"/header.txt", 'a')
+
+    driveutils.createNewLog(outputpath+"/footer.txt",False)
+    footerlog = open(outputpath+"/footer.txt", 'a')
+
+    driveutils.createNewLog(outputpath+"/body.txt",False)
+    bodylog = open(outputpath+"/body.txt", 'a')
+
+    filemode = "header"
+    readmode = "savetext"
+    divcount = 0
+    heldtext = ""
+
+    with open(logitem,'rb') as f:
+        for rline in f.readlines():
+            if filemode!="footer" and re.match("^\s*<\/body>\s*$",rline):
+                footerlog.write("</div>\n")
+                filemode="footer"
+
+            if filemode=="header":
+                headerlog.write(rline.rstrip()+"\n")
+            if filemode=="footer":
+                footerlog.write(rline.rstrip()+"\n")
+            if filemode=="body":
+                if re.match("^\s*<\/div>\s*$",rline):
+                    divcount=divcount+1
+                    if divcount < 3:
+                        heldtext+=rline.rstrip()+"\n"
+
+                elif re.match("^.*<\/div>\s*$",rline):
+                    divcount=1
+                    heldtext = ""
+                    bodylog.write(rline.rstrip()+"\n")
+                else:
+                    if len(heldtext) > 1:
+                        bodylog.write(heldtext.rstrip()+"\n")
+                    bodylog.write(rline.rstrip()+"\n")
+                    heldtext = ""
+                    divcount = 0
+
+            if filemode=="header" and re.match("^\s*<div (?:class|id)=\"(?:chat)?log\">\s*$",rline):
+                filemode="body"
+
+def segmentLogPieces(logitem,outputpath,username,servername,channelname):
+    readmode="open"
+
+    lasttimestr=None
+    oldesttimestr=None
+    objreader={'contents':[],'text':[],'last':lasttimestr}
+    with open(outputpath+"/body.txt",'rb') as f:
+        for rline in f.readlines():
+            if readmode == "open":
+                if re.match("^\s*<div class=\"chatlog__message-group\">\s*$",rline):
+                    objreader={'contents':[],'text':[],'last':lasttimestr}
+                    readmode = "writing"
+
+                objreader['contents'].append(rline.rstrip())
+            elif readmode == "writing":
+                if re.match("^\s*<div class=\"chatlog__message-group\">\s*$",rline):
+                    if 'time' in objreader.keys():
+                        writePostObject(objreader,outputpath)
+                    lasttimestr=objreader['last']
+                    objreader={'contents':[],'text':[],'last':lasttimestr,'lastc':objreader['lastc']}
+
+                if re.match("\s*<span class=\"chatlog__timestamp\">[^\<\>]+<\/span>\s*",rline):
+                    parts=re.findall("(?<=\"chatlog__timestamp\">)(\d\d)\-(\w+)-(\d\d) (\d\d)\:(\d\d) ([AP])M(?=<)",rline)
+                    objreader['time']=parts[0]
+                if re.match("<span class=\"chatlog__author-name\" title=.*<\/span>",rline):
+                    parts=re.findall("<span class=\"chatlog__author-name\" title=\"([^\"\<\>]+\#\d+)\">([^\"\<\>]+)<\/span>",rline)
+                    objreader['user']=parts[0]
+                if re.match("<div class=\"chatlog__content\">",rline):
+                    objreader['text'].append(rline.rstrip())
+                    readmode = "savetext"
+
+                objreader['contents'].append(rline.rstrip())
+            elif readmode == "savetext":
+                if re.match(".*<\/div>\s*$",rline):
+                    readmode = "writing"
+                objreader['text'].append(rline.rstrip())
+                objreader['contents'].append(rline.rstrip())
+
+
+    # save last posts, and remove trailing divs (cannot locate these reliably during loading)
+#                oldesttimestr=getOldestString(objreader['time'],oldesttimestr)
+    if 'time' in objreader.keys():
+        writePostObject(objreader,outputpath)
+    lasttimestr=objreader['last']
+
+    f.close()
+
+def joinSegmentPieceLogs(tmpoutputfolder,segmentoutputpath,splitjoinpath,username,serverstr,channelstr):
+    # JOIN NEW SEGMENT LOG PIECES WITH OLDER LOG PIECES
+    if not os.path.exists(splitjoinpath):
+        os.makedirs(splitjoinpath)
+
+    clearTmpFolders(splitjoinpath,True)
+
+    piecespath=tmpoutputfolder+"tmp/pieces/"+username+"/"+serverstr+"/"+channelstr+"/"
+
+    segmentoldpath=tmpoutputfolder+"tmp/oldsplit/"+username+"/"+serverstr+"/"+channelstr+"/"
+    if os.path.exists(segmentoldpath):
+        for datename in os.listdir(segmentoldpath):
+            if os.path.isdir(segmentoldpath+datename):
+                if re.match("^\d+$",datename):
+
+                    # only join/build old log dates if there's a new scan for them
+                    if os.path.isdir(piecespath+datename):
+
+                        for piecename in os.listdir(segmentoldpath+datename):
+                            if not os.path.exists(splitjoinpath+datename):
+                                os.makedirs(splitjoinpath+datename)
+
+                            if not os.path.exists(splitjoinpath+datename+"/"+piecename):
+                                shutil.copy(segmentoldpath+datename+"/"+piecename, splitjoinpath+datename+"/"+piecename)
+                            else:
+                                timename=re.findall("^(\d+)",piecename).pop()
+                                c=re.findall("^\d+\.(\d+)",piecename).pop()
+                                c=int(c)
+                                while os.path.exists(splitjoinpath+datename+"/"+timename+"."+str(c)+".txt"):
+                                    c=c+1
+                                newpiecename=timename+"."+str(c)+".txt"
+                                shutil.copy(segmentoldpath+datename+"/"+piecename, splitjoinpath+datename+"/"+newpiecename)
+    for datename in os.listdir(segmentoutputpath):
+        if os.path.isdir(segmentoutputpath+datename):
+            if re.match("^\d+$",datename):
+                for piecename in os.listdir(segmentoutputpath+datename):
+#                                    shutil.copytree(segmentoutputpath+datename, splitjoinpath)
+                    if not os.path.exists(splitjoinpath+datename):
+                        os.makedirs(splitjoinpath+datename)
+
+                    if not os.path.exists(splitjoinpath+datename+"/"+piecename):
+                        shutil.copy(segmentoutputpath+datename+"/"+piecename, splitjoinpath+datename+"/")
+                    else:
+                        timename=re.findall("^(\d+)",piecename).pop()
+                        c=re.findall("^\d+\.(\d+)",piecename).pop()
+                        c=int(c)
+                        while os.path.exists(splitjoinpath+datename+"/"+timename+"."+str(c)+".txt"):
+                            c=c+1
+                        newpiecename=timename+"."+str(c)+".txt"
+                        shutil.copy(segmentoutputpath+datename+"/"+piecename, splitjoinpath+datename+"/"+newpiecename)
+
         else:
-            for name in filelist:
-                namepath = path+"/"+name
-                if os.path.isdir(namepath):
-                    walkAndClear(namepath)
+            shutil.copy(segmentoutputpath+datename, splitjoinpath+datename)
 
-    exportfolder=outputfolder+"tmp/"+username+"/"
-    filelist = driveutils.readDir(exportfolder)
-    for datename in filelist:
-        datepath = exportfolder+datename
-        if os.path.isdir(datepath):
-            walkAndClear(datepath)
 
-def compileDiscordLogs(overallfolderpath,runopts):
+def compileDiscordLogs(overallfolderpath,overalltmppath,runopts):
     if 'nocompile' in runopts.keys():
         if runopts['nocompile'] == True:
             return
 
-    outputfolder=overallfolderpath+"discordexport/"
-    exportfolder=overallfolderpath+"discordexport/tmp/"
+    oldlogfolder=overallfolderpath+"discordlogs/"
+    tmpoutputfolder=overalltmppath+"discordexport/"
+    exportfolder=overalltmppath+"discordexport/tmp/exported/"
+    for username in os.listdir(exportfolder):
+        logpaths=exportfolder+username+"/"
+        for datedir in os.listdir(logpaths):
+            datedirpath=logpaths+datedir+"/"
+            for serverstr in os.listdir(datedirpath):
+                serverarr=serverstr.split("-")
+
+                serverid=serverarr.pop()
+                serversafename="-".join(serverarr)
+
+                serverfolderpath=datedirpath+serverstr+"/"
+                for channelstrfull in os.listdir(serverfolderpath):
+                    channelstr=channelstrfull.rstrip(".txt")
+                    channelarr=channelstrfull.rstrip(".txt").split("-")
+
+                    channelid=channelarr.pop()
+                    channelsafename="-".join(channelarr)
 
 
-    for username,tokenuserset in discordconf.IMPORTDICT.iteritems():
-        if os.path.exists(exportfolder+username):
-            targetlogs={}
-            targetlogs=gatherLogListWalk((exportfolder+username),{})
-            print targetlogs.keys()
-            print '---------'
-            continue
-            oldesttimestr=None
-            for servername,serverset in targetlogs.iteritems():
-                for channelname,logset in targetlogs[servername].iteritems():
-                    print '========= BEGIN: ',username,servername,channelname,'========='
-                    oldesttimestr=segmentLog(logset,overallfolderpath,outputfolder,username,servername,channelname)
+                    piecesoutputpath=tmpoutputfolder+"tmp/pieces/"+username+"/"+serverstr+"/"+channelstr+"/"
+                    clearTmpFolders(piecesoutputpath,True)
 
-                    outputpath=outputfolder+"pieces/"+username+"/"+servername+"/"+channelname+"/"
 
-                    if 'compileonly' not in runopts.keys() or runopts['compileonly'] == False:
-                        killOldestLogPieces(outputpath,oldesttimestr)
+                    discordlogpath = serverfolderpath+channelstrfull
+                    print 'divide log: ',discordlogpath
+                    divideUpLog(discordlogpath,piecesoutputpath,username,serverstr,channelstr)
+                    testtimestr=segmentLogPieces(discordlogpath,piecesoutputpath,username,serverstr,channelstr)
 
-                    killDupeLogPieces(outputpath)
-                    overlapLogPieces(outputfolder,username,servername,channelname,outputpath)
-                    rebuildLogs(overallfolderpath,outputfolder,username,servername,channelname,outputpath)
 
-                    print '========= CLEANUP: ',username,servername,channelname,'========='
-                    archivepath=outputfolder+"archive/"+username+"/"+servername+"/"+channelname+"/"
-                    archiveLogs(logset,archivepath,outputfolder)
-            clearEmptyTmps(outputfolder,username)
+                    for datename in os.listdir(piecesoutputpath):
+                        if os.path.isdir(piecesoutputpath+datename):
+                            if re.match("^\d+$",datename):
+                                dateyear=re.findall("^(\d{4})",datename).pop()
+                                datemonth=re.findall("^\d{4}(\d\d)",datename).pop()
+                                dateday=re.findall("^\d{6}(\d\d)",datename).pop()
+
+                                logcheckpath=oldlogfolder+username+"/"+serverstr+"/"+channelstr+"/"
+                                oldlogfile=logcheckpath+dateyear+"_"+datemonth+"_"+dateday+".html"
+                                if os.path.isfile(oldlogfile):
+#                                    segmentoldsplitpath=outputfolder+"tmp/oldsplit/"+username+"/"+serverstr+"/"+channelstr+"/"+datename+"/"
+                                    segmentoldsplitpath=tmpoutputfolder+"tmp/oldsplit/"+username+"/"+serverstr+"/"+channelstr+"/"
+                                    clearTmpFolders(segmentoldsplitpath+datename+"/",True)
+
+                                    print 'divide log: ',oldlogfile
+                                    divideUpLog(oldlogfile,segmentoldsplitpath,username,serverstr,channelstr)
+                                    segmentLogPieces(oldlogfile,segmentoldsplitpath,username,serverstr,channelstr)
+
+
+                    splitjoinpath=tmpoutputfolder+"tmp/splitjoin/"+username+"/"+serverstr+"/"+channelstr+"/"
+                    print 'join segments: ',splitjoinpath
+                    joinSegmentPieceLogs(tmpoutputfolder,piecesoutputpath,splitjoinpath,username,serverstr,channelstr)
+                    overlapLogPieces(tmpoutputfolder,username,serverstr,channelstr,splitjoinpath)
+                    print 'build logs: ',username,serverstr
+                    rebuildLogs(overallfolderpath,tmpoutputfolder,username,serverstr,channelstr)
+
+                    # loop over days
+                    # see if any current logs exist for that days
+                    # divide up log into a '/reserve/' folder, segment
+                    # attempt to pack together bodies.  if fails, pack together pieces?
+                    # push original log into /tmp/reserve/, replace with new
