@@ -510,6 +510,15 @@ def joinSegmentPieceLogs(tmpoutputfolder,segmentoutputpath,splitjoinpath,usernam
 
 
 def compileDiscordLogs(overallfolderpath,overalltmppath,runopts):
+    def checkForValidMessageFormat(logpath):
+        checkstr = None
+        for i, line in enumerate(open(logpath)):
+            for match in re.finditer( re.compile("\s*<div class=\"chatlog__message-group\">\s*"), line):
+                checkstr=match.groups()[0]
+                if checkstr is not None:
+                    return True
+        return False
+
     if 'nocompile' in runopts.keys():
         if runopts['nocompile'] == True:
             return
@@ -545,6 +554,12 @@ def compileDiscordLogs(overallfolderpath,overalltmppath,runopts):
                     divideUpLog(discordlogpath,piecesoutputpath,username,serverstr,channelstr)
                     testtimestr=segmentLogPieces(discordlogpath,piecesoutputpath,username,serverstr,channelstr)
 
+                    checklog = checkForValidMessageFormat(piecesoutputpath+"/body.txt")
+                    if checklog is None:
+                        print "ERR, log has no messages: ",discordlogpath
+                        sys.exit(0)
+
+
 
                     for datename in os.listdir(piecesoutputpath):
                         if os.path.isdir(piecesoutputpath+datename):
@@ -563,6 +578,11 @@ def compileDiscordLogs(overallfolderpath,overalltmppath,runopts):
                                     print 'divide log: ',oldlogfile
                                     divideUpLog(oldlogfile,segmentoldsplitpath,username,serverstr,channelstr)
                                     segmentLogPieces(oldlogfile,segmentoldsplitpath,username,serverstr,channelstr)
+
+                                    checklog = checkForValidMessageFormat(segmentoldsplitpath+"/body.txt")
+                                    if checklog is None:
+                                        print "ERR, log has no messages: ",oldlogfile
+                                        sys.exit(0)
 
 
                     splitjoinpath=tmpoutputfolder+"tmp/splitjoin/"+username+"/"+serverstr+"/"+channelstr+"/"
