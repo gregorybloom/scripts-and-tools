@@ -37,16 +37,7 @@ rm -f "$RUNTMPPATH/mounted.txt"
 #verifydriveflags "$RUNTMPPATH"
 #echo "loaded mounts and located flags"
 
-_SERVERBACKDUMP="${HOME}""$_SERVERBACKBASE"
-if [ -f "$RUNTMPPATH/mounted.txt" ]; then
-  if grep -qP "_DRIVEFLAG_PROJECT_NETDRIVE_" "$RUNTMPPATH/mounted.txt"; then
-    value=$(grep -P "_DRIVEFLAG_PROJECT_NETDRIVE_" "$RUNTMPPATH/mounted.txt")
-    basedrive=$(echo "$value" | grep -oP "(?<=,)\/[^,]+(?=,\w+,\w+)")
-    if echo "$SCRIPTPATH" | grep -qP "^$basedrive\/"; then
-      _SERVERBACKDUMP="$basedrive""$_SERVERBACKBASE"
-    fi
-  fi
-fi
+_SERVERBACKDUMP="${HOME}""$_SERVER100_BACKBASE"
 
 echo "saving to: $_SERVERBACKDUMP"
 
@@ -62,24 +53,34 @@ NODEDUMP="$_SERVERBACKDUMP/NodeFiles/filedump"
 
 RETRIEVEPATH="/tmp/retrieve"
 SCRIPTTMP="/tmp/scripttmp"
+
+
+rm -rf "$SCRIPTTMP"
+rm -rf "$CONFIGDUMP"
 mkdir -p "$SCRIPTTMP/"
-
-rm -rf "$RETRIEVEPATH"
-mkdir -p "$RETRIEVEPATH/ret_tmp"
-chmod 755 -R "$RETRIEVEPATH"
-
+mkdir -p "$CONFIGDUMP/"
 
 # #########################################################################################
 echo "Downloading server config"
-# Download '_SERVER100_SITESAVAIL' to /retrieve, copy to 'CONFIGDUMP'
-rsync --exclude-from 'config/r_excludes.txt' --temp-dir='ret_tmp' -e "ssh -i $_SSHKEYPATH -o PreferredAuthentications=publickey -p $_SERVER100_PORT" -avvzcWP --port="$_SERVER100_PORT" "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_SITESAVAIL" "$RETRIEVEPATH"
+# Download '_SERVER100_ etc config' to /retrieve, copy to 'CONFIGDUMP'
+rm -rf "$RETRIEVEPATH"
+mkdir -p "$RETRIEVEPATH/etc"
+chmod 755 -R "$RETRIEVEPATH"
+rsync --exclude-from 'config/r_excludes.txt' -e "ssh -i $_SSHKEYPATH -o PreferredAuthentications=publickey -p $_SERVER100_PORT" -avvzcWP --safe-links --port="$_SERVER100_PORT" "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_ETCCONF" "$RETRIEVEPATH/etc"
 
-rm -rf "$RETRIEVEPATH/ret_tmp"
-rsync -a "$RETRIEVEPATH/" "$CONFIGDUMP"
+cp -r "$RETRIEVEPATH/etc" "$CONFIGDUMP"
+
+# Download '_SERVER100_ etc config' to /retrieve, copy to 'CONFIGDUMP'
+rm -rf "$RETRIEVEPATH"
+mkdir -p "$RETRIEVEPATH/home"
+chmod 755 -R "$RETRIEVEPATH"
+rsync --exclude-from 'config/r_excludes.txt' -e "ssh -i $_SSHKEYPATH -o PreferredAuthentications=publickey -p $_SERVER100_PORT" -avvzcWP --safe-links --port="$_SERVER100_PORT" "$_SERVER100_USER@$_SERVER100_IP:$_SERVER100_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*"
+
+cp -r "$RETRIEVEPATH/home" "$CONFIGDUMP"
 
 # Zip 'CONFIGDUMP', move to 'CONFIGDUMPs' path folder
 mv "$CONFIGDUMP" "$SCRIPTTMP/"
-tar cvzf "$SCRIPTTMP/configdump.tar.gz" "$SCRIPTTMP/configdump"
+tar cvzf "$SCRIPTTMP/configdump.tar.gz" -C "$SCRIPTTMP" "configdump"
 mv "$SCRIPTTMP/configdump.tar.gz" "$CONFIGDUMP""_$currtime.tar.gz"
 rm -rfv "$SCRIPTTMP/configdump"
 
@@ -129,6 +130,7 @@ echo "mongodump saved to: ""$MONGODUMP""_$_SERVER100_APPNAME""_$currtime.tar.gz"
 rm -rf "$RETRIEVEPATH"
 
 
+ssh "$_SERVER100_USER@$_SERVER100_IP" -i "$_SSHKEYPATH" -o PreferredAuthentications=publickey -p "$_SERVER100_PORT" 'rm -f mongodump.tar.gz; rm -Rvf dump; rm -Rvf mongodump'
 echo "Done"
 
 
