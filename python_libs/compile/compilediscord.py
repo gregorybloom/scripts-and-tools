@@ -512,9 +512,16 @@ def joinSegmentPieceLogs(tmpoutputfolder,segmentoutputpath,splitjoinpath,usernam
 def compileDiscordLogs(overallfolderpath,overalltmppath,runopts):
     def checkForValidMessageFormat(logpath):
         checkstr = None
+
+        print logpath
         for i, line in enumerate(open(logpath)):
-            for match in re.finditer( re.compile("\s*<div class=\"chatlog__message-group\">\s*"), line):
-                checkstr=match.groups()[0]
+            for match in re.finditer( re.compile("\s*<div class=\"(chatlog__message-group)\">\s*"), line):
+                checkstrobj=match.groups()
+                if checkstrobj is None:
+                    continue
+                elif not isinstance(checkstrobj, tuple):
+                    continue
+                checkstr = checkstrobj[0]
                 if checkstr is not None:
                     return True
         return False

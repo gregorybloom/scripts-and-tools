@@ -214,10 +214,13 @@ def saveScanDates(username,serverstr,channelid,outfolder,exportfile,runopts):
             if oldestmatch is None:
                 oldestmatch=match.groups()[0]
             newestmatch=match.groups()[0]
+    if oldestmatch is None or newestmatch is None:
+        return
 #                    print 'Found on line %s: %s' % (i+1, match.groups())
-    print username,serverstr,channelid,oldestmatch,newestmatch
     oldesttime = discordcompile.parseTimeObj(oldestmatch.split("-"))
     newesttime = discordcompile.parseTimeObj(newestmatch.split("-"))
+
+    print 'save last time:',newestmatch,',',newesttime
 
     with open(datenotespathnew +channelid+'.txt', 'w') as the_file:
         the_file.write(newesttime['year']+"-"+newesttime['month']+"-"+newesttime['day']+'\n')
@@ -257,7 +260,6 @@ def exportFromDiscord(username,servername,serverid,channelid,channelname,channel
                 print " * failed on: ",servername,channelid
 
 
-#            saveScanDates(username,serverstr,channelid,outfolder,textfile,runopts)
 
             if os.path.isfile(dump):
                 os.remove(dump)
@@ -339,14 +341,17 @@ if "conffile" in runopts.keys() and os.path.exists(runopts["conffile"]):
                     print 'export: ',serversafename,channelid
                     exportFromDiscord(username,serverid,serversafename,channelinfo['id'],channelinfo['safename'],channelinfo,runopts['tmpfolder'],timestr)
 
-discordcompile.compileDiscordLogs(runopts['outfolder'],runopts['tmpfolder'],runopts)
+
+if "nocompile" not in runopts.keys():
+    discordcompile.compileDiscordLogs(runopts['outfolder'],runopts['tmpfolder'],runopts)
+
 
 if "conffile" in runopts.keys() and os.path.exists(runopts["conffile"]):
     channels=readDiscordChannelLog(runopts["conffile"],"configlog")
     targetlist=parseDiscordChannelLogList(channels,runopts)
     for username,itemlist in targetlist.iteritems():
         for serverid,serverobj in itemlist.iteritems():
-            serverstr=serverobj['name']+"-"+serverid
+            serverstr=serverid+"-"+serverobj['safename']
             for channelid,channelinfo in itemlist[serverid]['channelist'].iteritems():
                 folderpath = tmpfolder+"/discordexport/tmp/exported/"+username+"/"+timestr+"/"+serverstr+"/"
                 textfile = folderpath+"/"+channelinfo['safename']+"-"+channelid+".txt"
