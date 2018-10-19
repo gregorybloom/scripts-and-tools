@@ -220,7 +220,7 @@ def saveScanDates(username,serverstr,channelid,outfolder,exportfile,runopts):
     oldesttime = discordcompile.parseTimeObj(oldestmatch.split("-"))
     newesttime = discordcompile.parseTimeObj(newestmatch.split("-"))
 
-    print 'save last time:',newestmatch,',',newesttime
+    print 'save latest time:',newestmatch,',',datenotespathnew +channelid+'.txt'
 
     with open(datenotespathnew +channelid+'.txt', 'w') as the_file:
         the_file.write(newesttime['year']+"-"+newesttime['month']+"-"+newesttime['day']+'\n')
