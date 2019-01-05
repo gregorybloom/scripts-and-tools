@@ -18,6 +18,13 @@ hasfunct() {
       true
     fi
   elif [ "$testfn" == "mail" ]; then
+    $(mdadm > /dev/null 2>&1)
+    if [ "$?" -eq 127 ]; then
+      false
+    else
+      true
+    fi
+  elif [ "$testfn" == "mail" ]; then
     $(mail > /dev/null 2>&1)
     if [ "$?" -eq 127 ]; then
       false
@@ -494,10 +501,15 @@ loadrundata
 #####################################################################
 HAS_BLOCKID=true
 HAS_MAIL=true
+HAS_MDADM=true
 HAS_SWAKS=true
 
 echo "Check functions"
 
+if ! hasfunct "mdadm"; then
+  HAS_MDADM=false
+fi
+echo "HAS_MDADM  $HAS_MDADM"
 if ! hasfunct "blockid"; then
   HAS_BLOCKID=false
 fi
@@ -542,8 +554,10 @@ setlocked "$BASELOCKPATH" "$RUN_TYPE" true "$thedate"
 
 
 mkdir -p "$RUNLOGPATH"
+echo "t"
 mkdir -p "$RUNTMPPATH"
-
+ls -l "$RUNTMPPATH"
+echo "u"
 
 
 rebuildtmpfiles "$RUNTMPPATH"
@@ -725,7 +739,12 @@ fi
 
 
 df -h >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
-
+if [ "$HAS_MDADM" == true ]; then
+  echo "" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+  mdadm -D /dev/md127 >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+  echo "" >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+  cat /proc/mdstat >> "$RUNLOGPATH/log_shortened-$LOGSUFFIX"
+fi
 
 if [ "$PREP_ONLY" == true ]; then
   thedate2="$(date +'%Y/%m/%d  %H:%M')"

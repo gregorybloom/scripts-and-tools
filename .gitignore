@@ -18,6 +18,21 @@ scripts-configs/*
 */scripts-configs
 */scripts-configs/*
 
+configdump
+configdump/*
+*/configdump
+*/configdump/*
+
+.sync
+.sync/*
+*/.sync
+*/.sync/*
+
+.idea
+.idea/*
+*/.idea
+*/.idea/*
+
 *.pyc
 
 launchers

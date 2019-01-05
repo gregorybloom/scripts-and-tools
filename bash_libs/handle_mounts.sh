@@ -12,6 +12,7 @@ loadblockids() {
     elif echo "$a" | grep -qP "^\/dev\/md\d+"; then
       SAVEDRIVE=true
     fi
+    echo "$SAVEDRIVE,$a"
     if [ "$SAVEDRIVE" == true ]; then
       uuid=$(echo "$a" | grep -oP "(?<=\sUUID=\")[\w\-]+(?=\")")
       type=$(echo "$a" | grep -oP "(?<=\sTYPE=\")[\w\-]+(?=\")")

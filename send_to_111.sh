@@ -8,7 +8,7 @@ else
 	path="$1"
 fi
 
-source "config/grab_server111_info.sh"
+source "config/serverinfo/grab_server111_info.sh"
 
 
 TEMP=`getopt -o nzP --long existing,exclude:,exclude-from:,include:,include-from: \

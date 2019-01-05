@@ -3,7 +3,7 @@ import imp, os, sys, hashlib, time, shutil, re
 import csv, subprocess
 from datetime import datetime, timedelta
 
-#   useconfs or compileonly
+#   or compileonly
 
 
 SCRIPTPATH = os.path.dirname(os.path.realpath(sys.argv[0]))
@@ -69,6 +69,7 @@ def fetchDiscordList(channelid,tokenuserset):
     proccommand.append("--token")
     proccommand.append(tokenuserset['token'])
 
+#    proc = subprocess.Popen(["ls"], stdout=subprocess.PIPE)
     proc = subprocess.Popen(proccommand, stdout=subprocess.PIPE)
     (out, err) = proc.communicate()
     if err is None:
@@ -306,6 +307,8 @@ if not 'tmpfolder' in runopts.keys():
         os.makedirs(tmpfolder)
         runopts['tmpfolder']=tmpfolder
 
+if "allattach" in arglist:
+    runopts['allattach']=True
 if "noscan" in arglist:
     runopts['noscan']=True
 if "scanall" in arglist:
@@ -314,8 +317,11 @@ if "nocompile" in arglist:
     runopts['nocompile']=True
 if "compileonly" in arglist:
     discordcompile.compileDiscordLogs(runopts['outfolder'],runopts['tmpfolder'],runopts)
+    if "allattach" in arglist:
+        discordcompile.downloadAllAttachmentsDiscordLogs(runopts['outfolder'],runopts)
     sys.exit(0)
-if "useconfs" in arglist:
+
+if not "conffile" in runopts.keys():
     dlfile=SCRIPTPATH+'/config/discord_channel_list.txt'
     if os.path.exists(dlfile):
         if 'conffile' not in runopts.keys():
@@ -344,6 +350,8 @@ if "conffile" in runopts.keys() and os.path.exists(runopts["conffile"]):
 
 if "nocompile" not in runopts.keys():
     discordcompile.compileDiscordLogs(runopts['outfolder'],runopts['tmpfolder'],runopts)
+if "allattach" in runopts.keys():
+    discordcompile.downloadAllAttachmentsDiscordLogs(runopts['outfolder'],runopts)
 
 
 if "conffile" in runopts.keys() and os.path.exists(runopts["conffile"]):

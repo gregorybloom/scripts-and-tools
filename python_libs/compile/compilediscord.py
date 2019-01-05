@@ -3,6 +3,7 @@ import csv
 import filecmp
 
 SCRIPTPATH = os.path.dirname(os.path.realpath(sys.argv[0]))
+attachmentsdiscord = imp.load_source('attachmentsdiscord', SCRIPTPATH+'/python_libs/compile/attachmentsdiscord.py')
 discordconf = imp.load_source('discordconf', SCRIPTPATH+'/local_config/discordconf.py')
 driveutils = imp.load_source('driveutils', SCRIPTPATH+'/python_libs/utils/log_utils.py')
 
@@ -508,12 +509,18 @@ def joinSegmentPieceLogs(tmpoutputfolder,segmentoutputpath,splitjoinpath,usernam
         else:
             shutil.copy(segmentoutputpath+datename, splitjoinpath+datename)
 
+def downloadAllAttachmentsDiscordLogs(overallfolderpath,runopts):
+    oldlogfolder=overallfolderpath+"discordlogs/"
+    for username in os.listdir(oldlogfolder):
+        for serverstr in os.listdir(oldlogfolder+"/"+username):
+            for channelstr in os.listdir(oldlogfolder+"/"+username+"/"+serverstr):
+                logpaths=oldlogfolder+"/"+username+"/"+serverstr+"/"+channelstr
+                attachmentsdiscord.buildAllAttachments(overallfolderpath,username,serverstr,channelstr)
 
 def compileDiscordLogs(overallfolderpath,overalltmppath,runopts):
     def checkForValidMessageFormat(logpath):
         checkstr = None
 
-        print logpath
         for i, line in enumerate(open(logpath)):
             for match in re.finditer( re.compile("\s*<div class=\"(chatlog__message-group)\">\s*"), line):
                 checkstrobj=match.groups()
@@ -593,12 +600,11 @@ def compileDiscordLogs(overallfolderpath,overalltmppath,runopts):
 
 
                     splitjoinpath=tmpoutputfolder+"tmp/splitjoin/"+username+"/"+serverstr+"/"+channelstr+"/"
-                    print 'join segments: ',splitjoinpath
                     joinSegmentPieceLogs(tmpoutputfolder,piecesoutputpath,splitjoinpath,username,serverstr,channelstr)
                     overlapLogPieces(tmpoutputfolder,username,serverstr,channelstr,splitjoinpath)
-                    print 'build logs: ',username,serverstr
                     rebuildLogs(overallfolderpath,tmpoutputfolder,username,serverstr,channelstr)
 
+                    attachmentsdiscord.buildAttachmentsFromTmp(overallfolderpath,tmpoutputfolder,username,serverstr,channelstr)
                     # loop over days
                     # see if any current logs exist for that days
                     # divide up log into a '/reserve/' folder, segment

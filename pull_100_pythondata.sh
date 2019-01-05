@@ -9,8 +9,8 @@ echo ""
 
 
 source "config/findsshkeypath.sh"
-source "config/grab_server100_info.sh"
-source "config/grab_server111_info.sh"
+source "config/serverinfo/grab_server100_info.sh"
+source "config/serverinfo/grab_server111_info.sh"
 
 APPNAME="nodepython"
 APPPATH="/$APPNAME"
