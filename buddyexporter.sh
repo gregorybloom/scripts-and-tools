@@ -132,21 +132,21 @@ tuser=$(whoami)
 sourcepath="/drives/c/Users/$tuser"
 
 ############ USE MOUNT TO FIND DRIVEFLAG NAME
-backuppath="$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/logs/$thedate/sessionbuddy_$thedate.txt"
-if [ ! -d "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/" ]; then
-  mkdir "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/"
+backuppath="$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/logs/$thedate/sessionbuddy_$thedate.txt"
+if [ ! -d "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/" ]; then
+  mkdir "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/"
 fi
-#if [ ! -d "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/logs/" ]; then
-#  mkdir "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/logs/"
-#  mkdir "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/logs/$thedate/"
-#elif [ ! -d "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/logs/$thedate/" ]; then
-#  mkdir "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/logs/$thedate/"
+#if [ ! -d "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/logs/" ]; then
+#  mkdir "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/logs/"
+#  mkdir "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/logs/$thedate/"
+#elif [ ! -d "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/logs/$thedate/" ]; then
+#  mkdir "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/logs/$thedate/"
 #fi
-if [ ! -d "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/core/" ]; then
-  mkdir "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/core/"
+if [ ! -d "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/core/" ]; then
+  mkdir "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/core/"
 fi
-if [ ! -d "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/core/$thedate/" ]; then
-  mkdir "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/core/$thedate/"
+if [ ! -d "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/core/$thedate/" ]; then
+  mkdir "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/core/$thedate/"
 else
   echo "Already has the date.  Wait a minute and try again."
   exit 0
@@ -159,10 +159,10 @@ for filepath in $(ls -l "$sourcepath$extensionstartpath" | grep -oP "$extensions
   opath="$sourcepath$extensionstartpath$filepath"
   for last in $(ls -l "$opath" | grep -oP "(?<=\s)\w+$"); do
     if [ -f "$opath/$last" ]; then
-      cp "$opath/$last" "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/core/$thedate/sessioncore_$last__$thedate"
+      cp "$opath/$last" "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/core/$thedate/sessioncore_$last__$thedate"
 #      exportbuddysession "$opath" "$last" "$RUNTMPPATH" "$backuppath"
     fi
   done
 done
 
-removeoldlogs "$sourcepath/Backups/SessionBuddy_Backups/$driveflagname/core/" "^(\d{8}_T\d+)\s*$" "$RUNTMPPATH" 10
+removeoldlogs "$sourcepath/BackupSelf/SessionBuddy_Backups/$driveflagname/core/" "^(\d{8}_T\d+)\s*$" "$RUNTMPPATH" 10

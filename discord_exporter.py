@@ -299,6 +299,15 @@ if not 'outfolder' in runopts.keys():
     else:
         os.makedirs(outfolder)
         runopts['outfolder']=outfolder
+if not 'attachfolder' in runopts.keys():
+    attachfolder=discordconf._DISCORDATTACHBACKUPS
+    if os.path.exists(attachfolder):
+        runopts['attachfolder']=attachfolder
+    else:
+        os.makedirs(attachfolder)
+        runopts['attachfolder']=attachfolder
+
+
 if not 'tmpfolder' in runopts.keys():
     tmpfolder=discordconf._DISCORDTMPFOLDER
     if os.path.exists(tmpfolder):

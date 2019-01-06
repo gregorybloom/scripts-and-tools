@@ -54,3 +54,9 @@ __old
 __old/*
 */__old
 */__old/*
+
+
+*/herodb_builder/templates/_data/*
+*/herodb_builder/templates/_data
+herodb_builder/templates/_data/*
+herodb_builder/templates/_data

@@ -67,7 +67,7 @@ def stringOverlapLength(a, b):
 
 def rebuildLogs(overallfolderpath,tmpoutputfolder,username,servername,channelname):
     segmentspath=tmpoutputfolder+"tmp/segments/"+username+"/"+servername+"/"+channelname+"/"
-    discordlogs=overallfolderpath+"discordlogs/"+username+"/"+servername+"/"+channelname+"/"
+    discordlogs=overallfolderpath+"discordchatlogs/"+username+"/"+servername+"/"+channelname+"/"
     if not os.path.exists(discordlogs):
         os.makedirs(discordlogs)
 
@@ -510,12 +510,14 @@ def joinSegmentPieceLogs(tmpoutputfolder,segmentoutputpath,splitjoinpath,usernam
             shutil.copy(segmentoutputpath+datename, splitjoinpath+datename)
 
 def downloadAllAttachmentsDiscordLogs(overallfolderpath,runopts):
-    oldlogfolder=overallfolderpath+"discordlogs/"
+    runopts['attachlog']=attachmentsdiscord.loadAttachmentLog(overallfolderpath+"/discordattachlog/")
+
+    oldlogfolder=overallfolderpath+"discordchatlogs/"
     for username in os.listdir(oldlogfolder):
         for serverstr in os.listdir(oldlogfolder+"/"+username):
             for channelstr in os.listdir(oldlogfolder+"/"+username+"/"+serverstr):
                 logpaths=oldlogfolder+"/"+username+"/"+serverstr+"/"+channelstr
-                attachmentsdiscord.buildAllAttachments(overallfolderpath,username,serverstr,channelstr)
+                attachmentsdiscord.buildAllAttachments(overallfolderpath,username,serverstr,channelstr,runopts)
 
 def compileDiscordLogs(overallfolderpath,overalltmppath,runopts):
     def checkForValidMessageFormat(logpath):
@@ -537,9 +539,12 @@ def compileDiscordLogs(overallfolderpath,overalltmppath,runopts):
         if runopts['nocompile'] == True:
             return
 
-    oldlogfolder=overallfolderpath+"discordlogs/"
+    oldlogfolder=overallfolderpath+"discordchatlogs/"
     tmpoutputfolder=overalltmppath+"discordexport/"
     exportfolder=overalltmppath+"discordexport/tmp/exported/"
+
+    runopts['attachlog']=attachmentsdiscord.loadAttachmentLog(overallfolderpath+"/discordattachlog/")
+
     for username in os.listdir(exportfolder):
         logpaths=exportfolder+username+"/"
         for datedir in os.listdir(logpaths):
@@ -604,7 +609,7 @@ def compileDiscordLogs(overallfolderpath,overalltmppath,runopts):
                     overlapLogPieces(tmpoutputfolder,username,serverstr,channelstr,splitjoinpath)
                     rebuildLogs(overallfolderpath,tmpoutputfolder,username,serverstr,channelstr)
 
-                    attachmentsdiscord.buildAttachmentsFromTmp(overallfolderpath,tmpoutputfolder,username,serverstr,channelstr)
+                    attachmentsdiscord.buildAttachmentsFromTmp(overallfolderpath,tmpoutputfolder,username,serverstr,channelstr,runopts)
                     # loop over days
                     # see if any current logs exist for that days
                     # divide up log into a '/reserve/' folder, segment

@@ -1,0 +1,41 @@
+.postframe {
+}
+.postcontent {
+  padding:15px;
+  min-width:800px;
+  max-width:1000px;
+  border:1px #000 solid;
+}
+.posttext {
+  padding:10px;
+  min-width:800px;
+//  overflow:auto;
+//  white-space: nowrap;
+}
+.posthead {
+  padding:10px;
+  border-bottom:1px #999 solid;
+}
+.posttitle {
+  font-weight: bolder;
+  padding-bottom:5px;
+}
+.postuser {
+  font-style: oblique;
+}
+.postdate {
+  font-style: oblique;
+  font-size: 90%;
+  float:right;
+  bottom:15px;
+  position:relative;
+}
+
+.postchar:before {
+}
+.postuser:before {
+   content: "(";
+}
+.postuser:after {
+  content: ")";
+}

@@ -1,0 +1,44 @@
+<html>
+  <head>
+    <script>
+      var NAME = "xstorypost";
+    </script>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+    <script src="_template/js/setup.js"></script>
+    <script src="_template/js/buildlist.js"></script>
+
+    <link href="_template/css/list.css" rel="stylesheet" type="text/css" />
+
+    <script>
+        var path = window.location.href;
+        path = (path.match(/^(.*[\/\\])\s*/mg)).pop();
+
+        path = path.split("/");
+        var bit = path.pop();
+
+        if( /file\s*[^;]*\bbrowser\s*$/.test(getEngineType(window.location.href)) ) {
+            if(bit != "")  path.push(bit);
+        }
+        else if(engineMode === "node web browser") {
+            path.push("static");
+        }
+
+        path = path.join("/");
+
+
+        asyncBrowserLoad(path +"/_data/lists/js/"+NAME+"list.js",{},function(e) {
+            eval('var LISTDATA = JSONDATA_'+ NAME.toUpperCase() +';');
+            buildPostList(LISTDATA, NAME, this, null);
+        }.bind(document));
+    </script>
+
+
+
+  </head>
+  <body>
+    <div id="postlistdiv">
+    </div>
+  </body>
+</html>

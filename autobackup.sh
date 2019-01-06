@@ -17,7 +17,7 @@ hasfunct() {
     else
       true
     fi
-  elif [ "$testfn" == "mail" ]; then
+  elif [ "$testfn" == "mdadm" ]; then
     $(mdadm > /dev/null 2>&1)
     if [ "$?" -eq 127 ]; then
       false
@@ -169,12 +169,12 @@ findcopypaths() {
       if [ -f "$path/$backfile.txt" ]; then
         for m in $(cat "$path/$backfile.txt"); do
 
-          if echo "$m" | grep -qP "^\s*\w+,\d+,_\w+_,"; then
+          if echo "$m" | grep -qP "^\s*\w+,\w+,_\w+_,"; then
 
-            #      $runname,$copystep,$sourceflag,$sourcepath,$targetflag,$targetpath
+            #      $runname,$copytype,$sourceflag,$sourcepath,$targetflag,$targetpath
             IFS=',' read -ra vals6 <<< "$m"    #Convert string to array
             runname=${vals6[0]}
-            copystep=${vals6[1]}
+            copytype=${vals6[1]}
             sourceflag=${vals6[2]}
             sourcepath=${vals6[3]}
             targetflag=${vals6[4]}
@@ -209,8 +209,8 @@ findcopypaths() {
               fi
               if [ "$DEST_FOUND" == true ]; then
                 drivepath=$(echo "$path")
-                echo "$runname,$copystep,$drivepath,$sourceflag,$sourcepath,$targetdrivepath,$targetflag,$targetpath" >> "$RUNTMPPATH/copypaths.txt"
-                echo "$runname,$copystep,$drivepath,$sourceflag,$sourcepath,$targetdrivepath,$targetflag,$targetpath"
+                echo "$runname,$copytype,$drivepath,$sourceflag,$sourcepath,$targetdrivepath,$targetflag,$targetpath" >> "$RUNTMPPATH/copypaths.txt"
+                echo "$runname,$copytype,$drivepath,$sourceflag,$sourcepath,$targetdrivepath,$targetflag,$targetpath"
 
                 if [ "$SOURCE_FOLDERPATH" == false ]; then
 		                SOURCE_FOLDERPATH="$drivepath"
@@ -263,7 +263,7 @@ scanrsync() {
     IFS=',' read -ra vals8 <<< "$j"    #Convert string to array
 
     runname=${vals8[0]}
-    copystep=${vals8[1]}
+    copytype=${vals8[1]}
     drivepath=${vals8[2]}
     sourceflag=${vals8[3]}
     sourcepath=${vals8[4]}
@@ -286,6 +286,7 @@ scanrsync() {
     echo -e "\n--------- $sourcepath ----------\n" >> "$tmperrfile.tmp"
     rm -f "$tmplog"
     rm -f "$tmperrfile.tmp2"
+
     if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
 
       touch "$tmplog"
@@ -293,9 +294,11 @@ scanrsync() {
 #     c, D, z
 #      basev="-hrltzOWPSD"
       basev="-hrtzOWSD"
-      extend="--no-links --stats --no-compress "
+      extend="--no-links --stats --no-compress --exclude-from 'config/autobackup_excludes.txt' "
       if [ -d "$drivepath/$sourcepath" ]; then
-        extend+="--delete --delete-after "
+        if [ ! "$copytype" == "drop" ]; then
+          extend+="--delete --delete-after "
+        fi
       fi
       if [ "$testrun" == true ]; then
         extend+="--dry-run "
@@ -382,6 +385,15 @@ scanrsync() {
       echo "Errors detected."
     fi
     ############### DIFFERS AT THIS POINT
+    if [ "$copytype" == "drop" ] && [ "$testrun" == false ] && [ "$ERROR_FAIL" == false ]; then
+      for x in $(find "$drivepath/$sourcepath" -type f -not -path "*/.sync/*"); do
+        if echo "$x" | grep -qP "\.(jpg|jpeg|png|gif|mp3|mp4|txt|mov)$"; then
+          rm -fv "$x"
+        else
+          echo "skip drop: $x"
+        fi
+      done
+    fi
 
     if [ "$testrun" == false ]; then
       echo -e "\n--------- $sourcepath ----------\n" >> "$RUNLOGPATH/log_deletes-$LOGSUFFIX"
@@ -554,10 +566,7 @@ setlocked "$BASELOCKPATH" "$RUN_TYPE" true "$thedate"
 
 
 mkdir -p "$RUNLOGPATH"
-echo "t"
 mkdir -p "$RUNTMPPATH"
-ls -l "$RUNTMPPATH"
-echo "u"
 
 
 rebuildtmpfiles "$RUNTMPPATH"
