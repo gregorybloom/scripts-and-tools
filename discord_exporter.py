@@ -69,9 +69,9 @@ def fetchDiscordList(channelid,tokenuserset):
     proccommand.append("--token")
     proccommand.append(tokenuserset['token'])
 
-#    proc = subprocess.Popen(["ls"], stdout=subprocess.PIPE)
     proc = subprocess.Popen(proccommand, stdout=subprocess.PIPE)
     (out, err) = proc.communicate()
+
     if err is None:
         targetlist={}
         linelist = out.split("\r\n")
@@ -231,6 +231,8 @@ def saveScanDates(username,serverstr,channelid,outfolder,exportfile,runopts):
 
 def exportFromDiscord(username,servername,serverid,channelid,channelname,channelinfo,tmpoutfolder,timestr):
     dump="tmp/discord_dump.txt"
+    if not os.path.exists("tmp/"):
+        os.makedirs("tmp/")
     if os.path.isfile(dump):
         os.remove(dump)
 
@@ -249,7 +251,6 @@ def exportFromDiscord(username,servername,serverid,channelid,channelname,channel
 
             os.system(cmdstring)
 
-
             folderpath = tmpoutfolder+"/discordexport/tmp/exported/"+username+"/"+timestr+"/"+serverstr+"/"
             if not os.path.exists(folderpath):
                 os.makedirs(folderpath)
@@ -259,7 +260,6 @@ def exportFromDiscord(username,servername,serverid,channelid,channelname,channel
                 shutil.copyfile(dump,textfile)
             else:
                 print " * failed on: ",servername,channelid
-
 
 
             if os.path.isfile(dump):

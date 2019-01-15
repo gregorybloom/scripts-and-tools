@@ -62,7 +62,7 @@ def loadAttachmentLog(logfolder):
                     logarray[item].append(rline.rstrip())
     return logarray
 
-def addAttachmentLog(url,dltype,logfolder):
+def addAttachmentLog(url,dltype,logfolder,runopts):
     if not os.path.exists(logfolder):
         os.makedirs(logfolder)
     attachmentfile = open(logfolder+dltype+".txt", 'a')

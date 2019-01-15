@@ -1,0 +1,7 @@
+.postframe {
+  margin-left: 25px;
+}
+
+.postdiv > .postframe {
+  margin-left: 0px;
+}

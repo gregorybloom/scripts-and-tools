@@ -5,7 +5,7 @@
   min-width:900px;
   max-width:1000px;
   border:1px #000 solid;
-  height:20px;
+  height:22px;
   position: relative;
 }
 .linkdivfront {
@@ -14,8 +14,10 @@
 }
 .linkdivback {
   position:absolute;
-  right:0px;
+  right:10px;
   width:180px;
+  top:0px;
+  padding-top:5px;
   text-align: right;
 }
 
@@ -32,35 +34,19 @@
 }
 
 
-.posttext {
-  padding:10px;
-  min-width:800px;
-//  overflow:auto;
-//  white-space: nowrap;
+.linkuser {
+//  font-style: oblique;
+  font-size: 95%;
 }
-.posthead {
-  padding:10px;
-  border-bottom:1px #999 solid;
-}
-.posttitle {
-  font-weight: bolder;
-  padding-bottom:5px;
-}
-.postuser {
-  font-style: oblique;
-}
-.postdate {
-  font-style: oblique;
-  font-size: 90%;
-  bottom:15px;
-  position:relative;
+.linkchar {
+  font-size: 95%;
 }
 
-.postchar:before {
+.linkchar:before {
 }
-.postuser:before {
-   content: "(";
+.linkuser:before {
+   content: " (";
 }
-.postuser:after {
-  content: ")";
+.linkuser:after {
+  content: " )";
 }

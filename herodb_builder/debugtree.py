@@ -168,29 +168,29 @@ for posttype,postset in fixlist.iteritems():
 
 
 '''
-array=( 225525 206905 215058 229661 195136 195157 261084 160024 403939 403931 403929 336792 336790 336800 336796 403938 403930 425403 397136 403935 403910 336812 336754 336753 403933 403926 351064 403937 423528 351023 336793 351018 351033 351034 351024 351021 336788 9226 17163 1129 403946 422218 422217 351025 110761 336821 519970 128501 1166006 347781 336327 336255 423526 351027 1036473 275200 336802 351022 351020 351004 351014 336757 403948 519974 351002 351030 351026 403934 336767 336814 336822 336823 336824 336813 336815 336760 336758 351029 336817 230319 262784 ); 
+array=( 225525 206905 215058 229661 195136 195157 261084 160024 403939 403931 403929 336792 336790 336800 336796 403938 403930 425403 397136 403935 403910 336812 336754 336753 403933 403926 351064 403937 423528 351023 336793 351018 351033 351034 351024 351021 336788 9226 17163 1129 403946 422218 422217 351025 110761 336821 519970 128501 1166006 347781 336327 336255 423526 351027 1036473 275200 336802 351022 351020 351004 351014 336757 403948 519974 351002 351030 351026 403934 336767 336814 336822 336823 336824 336813 336815 336760 336758 351029 336817 230319 262784 );
 
 
-for id in "${array[@]}"; do 
-    childline=$(grep -irP "postid.\:\s+.\b"$id"\b" xstorypost.txt); 
-    childid=$(echo "$childline" | grep -oP "(?<=postid.\:\s.)\d+"); 
-    parentid=$(echo "$childline" | grep -oP "(?<=parentid.\:\s.)\d+"); 
-    parentline=$(grep -irP "postid.\:\s+.\b"$parentid"\b" xstorypost.txt); 
-    parentcamp=$(echo "$parentline" | grep -oP "(?<=campaignid.\:\s.)\d+"); 
-    childcamp=$(echo "$childline" | grep -oP "(?<=campaignid.\:\s.)\d+"); 
-    parentprog=$(echo "$parentline" | grep -oP "(?<=progenitorid.\:\s.)\d+"); 
+for id in "${array[@]}"; do
+    childline=$(grep -irP "postid.\:\s+.\b"$id"\b" xstorypost.txt);
+    childid=$(echo "$childline" | grep -oP "(?<=postid.\:\s.)\d+");
+    parentid=$(echo "$childline" | grep -oP "(?<=parentid.\:\s.)\d+");
+    parentline=$(grep -irP "postid.\:\s+.\b"$parentid"\b" xstorypost.txt);
+    parentcamp=$(echo "$parentline" | grep -oP "(?<=campaignid.\:\s.)\d+");
+    childcamp=$(echo "$childline" | grep -oP "(?<=campaignid.\:\s.)\d+");
+    parentprog=$(echo "$parentline" | grep -oP "(?<=progenitorid.\:\s.)\d+");
     childprog=$(echo "$childline" | grep -oP "(?<=progenitorid.\:\s.)\d+");
     echostr="$childid  ->  ";
-    if [[ ! "${array[@]}" =~ " ${parentid} " ]]; then 
+    if [[ ! "${array[@]}" =~ " ${parentid} " ]]; then
       echostr+="$parentid  , ";
-      if [[ ! "$parentcamp" == "$childcamp" ]]; then 
+      if [[ ! "$parentcamp" == "$childcamp" ]]; then
         echostr+="campaignid:  $childcamp  ->  $parentcamp  , ";
       fi;
-      if [[ ! "$parentprog" == "$childprog" ]]; then 
+      if [[ ! "$parentprog" == "$childprog" ]]; then
         echostr+="progenitorid:  $childprog  ->  $parentprog  , ";
       fi;
       echo "$echostr";
-    else 
+    else
       echostr+="$parentid<skip>";
       echo "$echostr";
     fi;
@@ -202,4 +202,3 @@ array=( 225525 206905 215058 229661 195136 195157 261084 160024 403939 403931 40
 
 array=( 225525 206905 215058 229661 195136 195157 261084 160024 403939 403931 403929 336792 336790 336800 336796 403938 403930 425403 397136 403935 403910 336812 336754 336753 403933 403926 351064 403937 423528 351023 336793 351018 351033 351034 351024 351021 336788 9226 17163 1129 403946 422218 422217 351025 110761 336821 519970 128501 1166006 347781 336327 336255 423526 351027 1036473 275200 336802 351022 351020 351004 351014 336757 403948 519974 351002 351030 351026 403934 336767 336814 336822 336823 336824 336813 336815 336760 336758 351029 336817 230319 262784 ); parentid="403931"; if [[ ! "${array[@]}" =~ "\b${parentid}\b" ]]; then echo "NOT FOUND"; else echo "FOUND"; fi
 '''
-

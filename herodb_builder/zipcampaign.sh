@@ -1,11 +1,8 @@
-#!/usr/bin/env bash
-#       sed -i 's/\r$//' zipcampaign.sh
-
-
-# imports certain functions when running as non-user root
+#!/bin/bash
 export PATH=$PATH:/sbin
 
 IFS=$'\n'
+
 
 SCRIPTPATH=`realpath "$0"`
 SCRIPTDIR=`dirname "$SCRIPTPATH"`
@@ -15,7 +12,7 @@ source "$SCRIPTDIR/config/heroconfdata.sh"
 
 
 fullpath="$_HEROBACKUPPATH";
-droppath="_DROPBOXPATH";
+droppath="$_DROPBOXPATH";
 
 
 echo "Find Campaign Name from:";
@@ -43,10 +40,10 @@ if echo "$target" | grep -qP "^\d+, "; then
 
     if [ -d "$fullpath/campaigns/$campaignid" ]; then
         newname="${campaignname//[^A-Za-z0-9_]/_}";
-	curpath=$(pwd)
-	cd "$fullpath"
+        curpath=$(pwd)
+        cd "$fullpath"
         zip -r "$fullpath/$newname-$campaignid.zip" "campaigns/$campaignid" > /dev/null;
-	cd "$curpath"
+        cd "$curpath"
         echo "";
         ls -l "$fullpath/$newname-$campaignid.zip";
 

@@ -294,12 +294,13 @@ scanrsync() {
 #     c, D, z
 #      basev="-hrltzOWPSD"
       basev="-hrtzOWSD"
-      extend="--no-links --stats --no-compress --exclude-from 'config/autobackup_excludes.txt' "
+      extend="--no-links --stats --no-compress --exclude-from '$SCRIPTDIR/config/autobackup_excludes.txt' "
       if [ -d "$drivepath/$sourcepath" ]; then
         if [ ! "$copytype" == "drop" ]; then
           extend+="--delete --delete-after "
         fi
       fi
+
       if [ "$testrun" == true ]; then
         extend+="--dry-run "
       fi
@@ -307,7 +308,7 @@ scanrsync() {
         basev+="vv"
       fi
 
-      echo "rsync $drivepath/$sourcepath $targetdrivepath/$targetpath"
+      echo "rsync $basev $extend '$drivepath/$sourcepath' '$targetdrivepath/$targetpath'"
       eval "rsync $basev $extend --log-file='$tmplog' '$drivepath/$sourcepath' '$targetdrivepath/$targetpath' 2>'$tmperrfile.tmp2'"
 
       echo "rsync completed."
@@ -387,7 +388,7 @@ scanrsync() {
     ############### DIFFERS AT THIS POINT
     if [ "$copytype" == "drop" ] && [ "$testrun" == false ] && [ "$ERROR_FAIL" == false ]; then
       for x in $(find "$drivepath/$sourcepath" -type f -not -path "*/.sync/*"); do
-        if echo "$x" | grep -qP "\.(jpg|jpeg|png|gif|mp3|mp4|txt|mov)$"; then
+        if echo "$x" | grep -qiP "\.(jpe?g|png|gif|mp3|mp4|txt|mov|wav|webm|jpw?g_?large|csv|js|mkv|ogg|pdf|webp|jar|html|epub|csv|m4a)$"; then
           rm -fv "$x"
         else
           echo "skip drop: $x"

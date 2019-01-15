@@ -18,17 +18,28 @@ var getPath = function(poplvl) {
 }
 
 var filterPostFields = function(fieldname, postfield) {
+
   var text = postfield.replace(/\\r\\n/gi,'<br>');
   text = text.replace(/\\t/gi,'&nbsp;');
   text = text.replace(/\\n/gi,'<br>');
 
   text = text.replace(/\[(playergm|talk|thought|action|ooc|radio)\]/, function(a, b){
-      return '<div class="postformatting '+b+'"><span class="formattext">[' + b + ']</span>';
+      return '<span class="postformatting '+b+'"><span class="formattext formatopen">[' + b + ']</span>';
   });
   text = text.replace(/\[\/(playergm|talk|thought|action|ooc|radio)\]/, function(a, b){
-      return '<span class="formattext">[/' + b + ']</span></div>';
+      return '<span class="formattext formatclose">[/' + b + ']</span></span>';
   });
-  if(fieldname == "postdate")  text = text.replace(/\.\d+(?:-\d*)?$/,'');
+
+  var copen = text.split("<span class=\"formattext formatopen\">[").length-1;
+  var cclose = text.split("<span class=\"formattext formatclose\">[").length-1;
+  if (copen > cclose) {
+    for(var i=cclose; i<copen;c++) {
+      text = text + '</span>';
+    }
+  }
+
+  if(fieldname == "postdate")  text = text.replace(/\-\d+$/,'');
+  if(fieldname == "postdate")  text = text.replace(/\.\d+$/,'');
   if(fieldname == "postdate")  text = text.replace(/\s+(?=\d\d\:)/,'&nbsp;&nbsp;&nbsp;');
 
   return text;
@@ -100,7 +111,7 @@ var loadNext = function(list,items,pos,callback) {
     }.bind(document));
   }
 };
-var buildPostList = function(postlistdata, type, doc, callback) {
+var buildPostList = function(postlistdata, mode, type, doc, callback) {
   var poplvl = 0;
 //  if(NAME == "INDEX")   poplvl = 1;
   var path = getPath(poplvl);
@@ -141,8 +152,8 @@ var buildPostList = function(postlistdata, type, doc, callback) {
 
 
                   dLink = document.createElement('a');
-                  dLink.href = path + "/posts/"+ type +"/"+ postdata['postid'] +".html";
-                  dLink.innerHTML = "/posts/"+ type +"/"+ postdata['postid'] +".html";
+                  dLink.href = path + "/posts/dynamic/"+ type +"/"+ postdata['postid'] +".html";
+                  dLink.innerHTML = "/posts/dynamic/"+ type +"/"+ postdata['postid'] +".html";
                   dLinkFront.append(dLink);
 
 
@@ -156,7 +167,7 @@ var buildPostList = function(postlistdata, type, doc, callback) {
               $(dLinkBack).addClass("linkdivback");
               dLinkDiv.append(dLinkBack);
 
-/*
+
                   dChar = document.createElement('span');
                   $(dChar).addClass("linkchar");
                   dChar.innerHTML = filterPostFields('postchar', getNameText(postdata,loaditems,'char',postdata['userid']));
@@ -167,7 +178,7 @@ var buildPostList = function(postlistdata, type, doc, callback) {
                   dLinkBack.append(dUser);
 /**/
 
-                  dDate = document.createElement('span');
+                  dDate = document.createElement('div');
                   $(dDate).addClass("linkdivdate");
                   dDate.innerHTML = filterPostFields('postdate',postdata['postdate']);
                   dLinkBack.append(dDate);

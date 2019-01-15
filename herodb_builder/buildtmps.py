@@ -48,6 +48,9 @@ with open(_COREPATH+"/tabledump/xuser.txt", 'r') as f:
 with open(_COREPATH+"/tabledump/xcampaign.txt", 'r') as f:
     for line in f:
         campaigndata = json.loads(line.rstrip())
+        if re.match("^\\*N$",campaigndata['campaignid']):
+            campaigndata['campaignid']='N'
+
         writefile = open(_TMPPATH + "/tmp/campaigns/"+campaigndata['campaignid']+".txt", 'w')
         if writefile:
             writefile.write(line)
@@ -56,6 +59,9 @@ with open(_COREPATH+"/tabledump/xcampaign.txt", 'r') as f:
 with open(_COREPATH+"/tabledump/xcharacter.txt", 'r') as f:
     for line in f:
         characterdata = json.loads(line.rstrip())
+        if re.match("^\\*N$",characterdata['campaignid']):
+            characterdata['campaignid']='N'
+
         if not os.path.exists(_TMPPATH + "/tmp/characters/"+characterdata['campaignid']):
             os.makedirs(_TMPPATH + "/tmp/characters/"+characterdata['campaignid'])
         writefile = open(_TMPPATH + "/tmp/characters/"+characterdata['campaignid']+"/"+characterdata['userid']+".txt", 'w')
@@ -66,6 +72,9 @@ with open(_COREPATH+"/tabledump/xcharacter.txt", 'r') as f:
 with open(_COREPATH+"/tabledump/xquotes.txt", 'r') as f:
     for line in f:
         quotedata = json.loads(line.rstrip())
+        if re.match("^\\*N$",quotedata['campaignid']):
+            quotedata['campaignid']='N'
+
         if not os.path.exists(_TMPPATH + "/tmp/quotes/"+quotedata['campaignid']):
             os.makedirs(_TMPPATH + "/tmp/quotes/"+quotedata['campaignid'])
         writefile = open(_TMPPATH + "/tmp/quotes/"+quotedata['campaignid']+"/"+quotedata['\"position\"']+".txt", 'w')
@@ -76,6 +85,9 @@ with open(_COREPATH+"/tabledump/xquotes.txt", 'r') as f:
 with open(_COREPATH+"/tabledump/xtimeline.txt", 'r') as f:
     for line in f:
         timelinedata = json.loads(line.rstrip())
+        if re.match("^\\*N$",timelinedata['campaignid']):
+            timelinedata['campaignid']='N'
+
         if not os.path.exists(_TMPPATH + "/tmp/timeline/"+timelinedata['campaignid']):
             os.makedirs(_TMPPATH + "/tmp/timeline/"+timelinedata['campaignid'])
         writefile = open(_TMPPATH + "/tmp/timeline/"+timelinedata['campaignid']+"/"+timelinedata['\"position\"']+".txt", 'w')

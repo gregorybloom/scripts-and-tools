@@ -19,7 +19,7 @@ _TMPPATH=heroconf._HEROTMPOUTPUT
 
 
 
-justpushtemplates=True
+justpushtemplates=False
 
 def writeUserData(campaignid,userid,userdata):
     campaignpath = _COREPATH + "/campaigns/" + campaignid
@@ -64,9 +64,15 @@ if writefile:
     with open(_COREPATH+"/tabledump/xcampaign.txt", 'r') as f:
       for line in f:
         campaigndata = json.loads(line.rstrip())
-        writefile.write(campaigndata['campaignid']+', '+campaigndata['campaignname']+"\n")
-        print campaigndata['campaignid']+', '+campaigndata['campaignname']
+        if re.match("^\\*N$",campaigndata['campaignid']):
+            campaigndata['campaignid']='N'
 
+        writefile.write(campaigndata['campaignid']+', '+campaigndata['campaignname']+"\n")
+        print 'write:', campaigndata['campaignid']+', '+campaigndata['campaignname']
+
+
+if not os.path.exists(_COREPATH+"/campaigns/"):
+    os.makedirs(_COREPATH+"/campaigns/")
 if os.path.exists(_COREPATH+"/campaigns/campaignlist.txt"):
     os.remove(_COREPATH+"/campaigns/campaignlist.txt")
 if not os.path.exists(_COREPATH+"/campaigns/campaignlist.txt"):
@@ -79,6 +85,8 @@ if not os.path.exists(_COREPATH+"/campaigns/campaignlist.txt"):
 with open(_COREPATH+"/tabledump/xcampaign.txt", 'r') as f:
   for line in f:
     campaigndata = json.loads(line.rstrip())
+    if re.match("^\\*N$",campaigndata['campaignid']):
+        campaigndata['campaignid']='N'
 
     campaignpath = _COREPATH + "/campaigns/" + campaigndata['campaignid']
     if not os.path.exists(campaignpath):
@@ -90,7 +98,6 @@ with open(_COREPATH+"/tabledump/xcampaign.txt", 'r') as f:
         if os.path.exists(templatefolderpath):
             shutil.rmtree(templatefolderpath,ignore_errors=True)
         shutil.copytree(SCRIPTPATH+"/templates/_template", _COREPATH + "/campaigns/" + campaigndata['campaignid'] + "/_template")
-
 
 
 
@@ -168,7 +175,7 @@ with open(_COREPATH+"/tabledump/xcampaign.txt", 'r') as f:
                         usercharlibrary['chars'][characterdata['userid']]=characterdata['userid'];
 
 
-
+        print campaignpath + "/_data/lists/json/" + "/userlist.json"
         if not os.path.exists(campaignpath + "/_data/lists/json/"):
             os.makedirs(campaignpath + "/_data/lists/json/")
         if not os.path.exists(campaignpath + "/_data/lists/js/"):
@@ -184,14 +191,13 @@ with open(_COREPATH+"/tabledump/xcampaign.txt", 'r') as f:
             writefile.close()
 
 
-
         if os.path.exists(_TMPPATH+"/tmp/quotes/"+campaigndata['campaignid']):
             quotelist={}
             for filename in os.listdir(_TMPPATH+"/tmp/quotes/"+campaigndata['campaignid']):
                 with open(_TMPPATH+"/tmp/quotes/"+campaigndata['campaignid']+"/"+filename, 'r') as f:
                     for line in f:
                         quotedata = json.loads(line.rstrip())
-                        print quotedata
+                        print 'quote:', quotedata
                         quotelist[quotedata['\"position\"']] = quotedata
 
             writefile = open(campaignpath + "/quotes.txt", 'w')
@@ -210,14 +216,13 @@ with open(_COREPATH+"/tabledump/xcampaign.txt", 'r') as f:
                 writefile.close()
 
 
-
         if os.path.exists(_TMPPATH+"/tmp/timeline/"+campaigndata['campaignid']):
             timelinelist={}
             for filename in os.listdir(_TMPPATH+"/tmp/timeline/"+campaigndata['campaignid']):
                 with open(_TMPPATH+"/tmp/timeline/"+campaigndata['campaignid']+"/"+filename, 'r') as f:
                     for line in f:
                         timelinedata = json.loads(line.rstrip())
-                        print timelinedata
+                        print 'timeline:', timelinedata
                         timelinelist[timelinedata['\"position\"']] = timelinedata
 
             writefile = open(campaignpath + "/timeline.txt", 'w')
@@ -242,16 +247,17 @@ with open(_COREPATH+"/tabledump/xcampaign.txt", 'r') as f:
     posttype=['xstorypost','xmessagepost']
     for posttype in posttype:
 
-        if not os.path.exists(_COREPATH + "/campaigns/" + campaigndata['campaignid'] + "/posts/" + posttype):
-            os.makedirs(_COREPATH + "/campaigns/" + campaigndata['campaignid'] + "/posts/" + posttype)
+        postset=['static','dynamic']
+        for set in postset:
+            if not os.path.exists(_COREPATH + "/campaigns/" + campaigndata['campaignid'] + "/posts/" +set+ "/"+ posttype):
+                os.makedirs(_COREPATH + "/campaigns/" + campaigndata['campaignid'] + "/posts/" +set+ "/"+ posttype)
 
-        if os.path.exists(SCRIPTPATH+"/templates/posts/posttemplate"):
-            templatefolderpath=_COREPATH + "/campaigns/" + campaigndata['campaignid'] + "/posts/" + posttype +"/posttemplate"
-            if os.path.exists(templatefolderpath):
-                shutil.rmtree(templatefolderpath, ignore_errors=True)
-            if not os.path.exists(templatefolderpath):
-                shutil.copytree(SCRIPTPATH+"/templates/posts/posttemplate", templatefolderpath)
+            if os.path.exists(SCRIPTPATH+"/templates/posts/posttemplate"):
+                templatefolderpath=_COREPATH + "/campaigns/" + campaigndata['campaignid'] + "/posts/" +set+ "/"+ posttype +"/posttemplate"
+                if os.path.exists(templatefolderpath):
+                    shutil.rmtree(templatefolderpath, ignore_errors=True)
+                if not os.path.exists(templatefolderpath):
+                    shutil.copytree(SCRIPTPATH+"/templates/posts/posttemplate", templatefolderpath)
 
 #    if not os.path.exists(campaignpath + "/gameposts"):
 #        os.makedirs(campaignpath + "/gameposts")
-

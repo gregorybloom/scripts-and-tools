@@ -33,7 +33,10 @@ def placePostData(postid,dict,postdata,reservelist,depth,fulldict):
         sys.exit(1)
 
 
+    if re.match("^\\*N$",postdata['campaignid']):
+        postdata['campaignid']='N'
     if postdata['parentid'] in dict.keys():
+
 
         if '_subposts' not in dict[postdata['parentid']].keys():
             dict[postdata['parentid']]['_subposts']={}
@@ -65,6 +68,8 @@ def placePostData(postid,dict,postdata,reservelist,depth,fulldict):
 
 
 def addToPostData(tablename,postdict,postdata,reservelist,addanywhere=False):
+    if re.match("^\\*N$",postdata['campaignid']):
+        postdata['campaignid']='N'
 
     if postdata['campaignid'] not in postdict['posttree'].keys():
         postdict['posttree'][ postdata['campaignid'] ]={}
@@ -109,6 +114,9 @@ def addToPostData(tablename,postdict,postdata,reservelist,addanywhere=False):
     return 0
 
 def addPostFromReserveList(campaignid, postid, postdata, treedata, depth):
+    if re.match("^\\*N$",postdata['campaignid']):
+        postdata['campaignid']='N'
+
     if postdata['parentid'] in treedata.keys():
         if '_subposts' not in treedata[postdata['parentid']].keys():
             treedata[postdata['parentid']]['_subposts'] = {}
@@ -187,6 +195,9 @@ for posttype in posttypes:
     with open(_COREPATH + "/tabledump/"+posttype+".txt", 'r') as f:
         for line in f:
             postdata = json.loads(line.rstrip())
+            if re.match("^\\*N$",postdata['campaignid']):
+                postdata['campaignid']='N'
+
             patchLoadedData(postdata,patchlist)
 
             postid = postdata["storypostid"] if "storypostid" in postdata.keys() else None
@@ -207,6 +218,9 @@ for posttype in posttypes:
     with open(_COREPATH + "/tabledump/"+posttype+".txt", 'r') as f:
         for line in f:
             postdata = json.loads(line.rstrip())
+            if re.match("^\\*N$",postdata['campaignid']):
+                postdata['campaignid']='N'
+
             patchLoadedData(postdata,patchlist)
 
             postid = postdata["storypostid"] if "storypostid" in postdata.keys() else None
@@ -240,6 +254,10 @@ for posttype in posttypes:
 rcountmax=len(reservelist.keys())
 rcount=0
 for campaignid,list in reservelist.iteritems():
+    if re.match("^\\*N$",campaignid):
+        campaignid='N'
+
+
     rcount += 1
     for posttype,list2 in reservelist[campaignid].iteritems():
 
@@ -257,6 +275,9 @@ for campaignid,list in reservelist.iteritems():
             postlist=reservelist[campaignid][posttype].keys()
             for postid in postlist:
                 postdata=reservelist[campaignid][posttype][postid]
+                if re.match("^\\*N$",postdata['campaignid']):
+                    postdata['campaignid']='N'
+
                 if postdata['campaignid'] in postdict['posttree'].keys():
                     if posttype in postdict['posttree'][postdata['campaignid']].keys():
 
@@ -340,6 +361,9 @@ if os.path.exists(_COREPATH + "/infodump/reservelist"):
 if not os.path.exists(_COREPATH + "/infodump/reservelist"):
     os.makedirs(_COREPATH + "/infodump/reservelist")
 for campaignid,list in reservelist.iteritems():
+    if re.match("^\\*N$",campaignid):
+        campaignid='N'
+
     for posttype,list2 in reservelist[campaignid].iteritems():
         if len(reservelist[campaignid][posttype].keys()) > 0:
             if not os.path.exists(_COREPATH + "/infodump/reservelist/"+posttype):
@@ -376,6 +400,8 @@ for campaignid in postdict['posttree'].keys():
             writefile.close()
 '''
 for campaignid,list in reservelist.iteritems():
+    if re.match("^\\*N$",campaignid):
+        campaignid='N'
+
     for posttype,list2 in reservelist[campaignid].iteritems():
         print 'reserve:',campaignid,posttype,len(reservelist[campaignid][posttype].keys()),',',reservelist[campaignid][posttype].keys()
-

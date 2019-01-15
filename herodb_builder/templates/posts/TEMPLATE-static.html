@@ -2,15 +2,19 @@
   <head>
     <script>
       var NAME = "INDEX";
+      var MODE = "static";
     </script>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 
     <script src="posttemplate/js/setup.js"></script>
     <script src="posttemplate/js/buildposts.js"></script>
-    <script src="posttemplate/js/setuplist.js"></script>
+    <script src="posttemplate/js/build-static.js"></script>
+
+
 
     <link href="posttemplate/css/posts.css" rel="stylesheet" type="text/css" />
+    <link href="posttemplate/css/static.css" rel="stylesheet" type="text/css" />
 
     <script>
         var path = window.location.href;
@@ -19,6 +23,7 @@
         path = path.split("/");
         var bit = path.pop();
 
+        /*
         if( /file\s*[^;]*\bbrowser\s*$/.test(getEngineType(window.location.href)) ) {
             if(bit != "")  path.push(bit);
         }
@@ -30,8 +35,9 @@
 
 
         asyncBrowserLoad(path +"/postdata/js/"+NAME+".js",{},function(e) {
-            buildPostList(JSONDATA, this, null);
+            buildPostList(JSONDATA, MODE, this, null);
         }.bind(document));
+        /**/
     </script>
 
 
