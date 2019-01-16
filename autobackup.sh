@@ -116,19 +116,20 @@ loadrundata() {
   fi
 }
 sourcematch() {
-  sourcescriptpath="$1"
-  if [[ $SCRIPTPATH == $sourcescriptpath* ]]; then
+  sourcematchpath="$1"
+
+  if [[ $SCRIPTPATH == $sourcematchpath* ]] && [ "$SOURCE_SCRIPT" == false ]; then
     true
   elif [ ! "$SOURCE_SCRIPT" == false ]; then
-    if [[ $SOURCE_SCRIPT == $sourcescriptpath* ]]; then
+    if [[ $SOURCE_SCRIPT == $sourcematchpath* ]]; then
       true
-    elif [[ "$sourcescriptpath" == "/drives/c" ]] && [[ "$HOME" == "/home/mobaxterm" ]] && [[ "$SCRIPTPATH" == /home/* ]]; then
+    elif [[ "$sourcematchpath" == "/drives/c" ]] && [[ "$HOME" == "/home/mobaxterm" ]] && [[ "$SCRIPTPATH" == /home/* ]]; then
       true
     else
       false
     fi
   else
-    if [[ "$sourcescriptpath" == "/drives/c" ]] && [[ "$HOME" == "/home/mobaxterm" ]] && [[ "$SCRIPTPATH" == /home/* ]]; then
+    if [[ "$sourcematchpath" == "/drives/c" ]] && [[ "$HOME" == "/home/mobaxterm" ]] && [[ "$SCRIPTPATH" == /home/* ]]; then
       true
     else
       false
@@ -137,39 +138,37 @@ sourcematch() {
 }
 #####################################
 findcopypaths() {
-  touch "$RUNTMPPATH/copypaths.txt"
-  for j in $(cat "$RUNTMPPATH/mounted.txt"); do
+  runtmppath="$1"
+  drivepathfile="$2"
+  copypathfile="$3"
+
+  touch "$copypathfile"
+  for j in $(cat "$drivepathfile"); do
     IFS=',' read -ra vals5 <<< "$j"    #Convert string to array
 
     opath=${vals5[0]}
     path=${vals5[1]}
     type=${vals5[2]}
     driveflag=${vals5[3]}
+
+
     backupflags=()
-
     if sourcematch "$path"; then
-      for k in $(ls -l "$path"); do
-        if echo "$k" | grep -qP "^\-[\w\-\.\+]+\s*\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+(?:\d+\:)?\d+\s+_BACKUPFLAG_\w+_\.txt\s*$"; then
-
-          # ADD BACKUP FLAGS ONLY IF THEY COME FROM SAME DRIVE AS SCRIPT
-          bkupflag=$(echo "$k" | grep -oP "(?<=\s)_BACKUPFLAG_\w+_(?=\.txt\s*$)")
-          if [ -f "$path/$bkupflag.txt" ]; then
-            backupflags+=($bkupflag)
-          fi
-        fi
-      done
-#    else
-#      echo "$path skipped - is not source from script path: $SCRIPTPATH"
+        flagname="_BACKUP"$(echo "$driveflag" | grep -oP "(?<=_DRIVE)FLAG_\w+_")
+        for k in $(ls -1 "$_AUTOBACKUPINFOFOLDER"); do
+            if [ "$k" == "$flagname.txt" ]; then
+                backupflags+=($flagname)
+            fi
+        done
     fi
 
     for back in ${backupflags[@]}; do
-#      backfile="${backupflags["$back"]}"
       backfile="$back"
 
-      if [ -f "$path/$backfile.txt" ]; then
-        for m in $(cat "$path/$backfile.txt"); do
+      if [ -f "$_AUTOBACKUPINFOFOLDER/$backfile.txt" ]; then
+        for m in $(cat "$_AUTOBACKUPINFOFOLDER/$backfile.txt"); do
 
-          if echo "$m" | grep -qP "^\s*\w+,\w+,_\w+_,"; then
+          if echo "$m" | grep -qP "^\s*\w+,"; then
 
             #      $runname,$copytype,$sourceflag,$sourcepath,$targetflag,$targetpath
             IFS=',' read -ra vals6 <<< "$m"    #Convert string to array
@@ -179,7 +178,6 @@ findcopypaths() {
             sourcepath=${vals6[3]}
             targetflag=${vals6[4]}
             targetpathM=${vals6[5]}
-#	    targetpath=$(echo "$targetpathM")
             targetpath=$(echo "$targetpathM" | sed -e "s/[]//g")
 
             if [ "$RUN_TYPE" != "$runname" ]; then
@@ -192,13 +190,15 @@ findcopypaths() {
 
             if [ "$RUN_TYPE" == "$runname" ]; then
               if [ "$driveflag" == "$sourceflag" ]; then
+
                 SOURCE_FOUND=true
                 if sourcematch "$path"; then
                   SOURCE_MATCHES_SELF=true
 
-                  for n in $(cat "$RUNTMPPATH/mounted.txt"); do
+                  for n in $(cat "$drivepathfile"); do
                     IFS=',' read -ra vals7 <<< "$n"    #Convert string to array
                     targetflag2=${vals7[3]}
+
                     if [[ "$targetflag" == "$targetflag2" ]]; then
                       targetdrivepath=${vals7[1]}
                       DEST_FOUND=true
@@ -287,6 +287,11 @@ scanrsync() {
     rm -f "$tmplog"
     rm -f "$tmperrfile.tmp2"
 
+    echo '-----------------------------------------------------'
+    echo '-----------------------------------------------------'
+    echo "$drivepath/$sourcepath"
+    echo "$targetdrivepath/$targetpath"
+    echo '-----------------------------------------------------'
     if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
 
       touch "$tmplog"
@@ -318,6 +323,7 @@ scanrsync() {
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
+      echo "**** ERRR 1,$drivepath/$sourcepath"
       echo -e "ERROR: PATH '$drivepath/$sourcepath' NOT FOUND for source drive '$sourceflag'\n" >> "$tmperrfile.tmp"
       echo -e "--------------------------\n" >> "$tmperrfile.tmp"
 
@@ -328,6 +334,7 @@ scanrsync() {
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
+      echo "**** ERRR 2"
       echo -e "ERROR: PATH '$targetdrivepath/$targetpath' NOT FOUND for target drive '$targetflag'\n" >> "$tmperrfile.tmp"
       echo -e "--------------------------\n" >> "$tmperrfile.tmp"
 
@@ -350,6 +357,8 @@ scanrsync() {
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
+      echo "**** ERRR 3,$?,$tmperrfile.tmp2"
+      if [ ! -s "$tmperrfile.tmp2" ]; then echo "XX"; fi
 
       errlabel=$(getrsyncerrcode "$?")
       echo -e "------ $? : $errlabel : $sourcepath ------\n" >> "$tmperrfile.tmp"
@@ -365,6 +374,7 @@ scanrsync() {
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
+      echo "**** ERRR 4"
 
       echo "--$errdumpltr/4-- $sourcepath : $j" >> "$tmperrfile.tmp"
       grepRSyncFailure "$tmplog" "$tmperrfile.tmp"
@@ -377,6 +387,7 @@ scanrsync() {
       LOOP_ERROR_FAIL=true
       PRE_ERROR_FAIL=true
       ERROR_FAIL=true
+      echo "**** ERRR 5"
 
       echo "--$errdumpltr/5-- $sourcepath : $j" >> "$tmperrfile.tmp2"
       grepRSyncFailure "$tmplog" "$tmperrfile.tmp2"
@@ -388,12 +399,15 @@ scanrsync() {
     ############### DIFFERS AT THIS POINT
     if [ "$copytype" == "drop" ] && [ "$testrun" == false ] && [ "$ERROR_FAIL" == false ]; then
       for x in $(find "$drivepath/$sourcepath" -type f -not -path "*/.sync/*"); do
-        if echo "$x" | grep -qiP "\.(jpe?g|png|gif|mp3|mp4|txt|mov|wav|webm|jpw?g_?large|csv|js|mkv|ogg|pdf|webp|jar|html|epub|csv|m4a)$"; then
-          rm -fv "$x"
+        if echo "$x" | grep -qiP "\.(jpe?g|png|gif|mp3|mp4|zip|rar|txt|mov|wav|webm|jpw?g_?large|csv|js|mkv|ogg|pdf|webp|jar|html|epub|csv|m4a)$"; then
+          rm -f "$x"
         else
           echo "skip drop: $x"
+          touch "$RUNLOGPATH/log_skipdelete-$LOGSUFFIX"
+          echo "$x" >> "$RUNLOGPATH/log_skipdelete-$LOGSUFFIX"
         fi
       done
+      find "$drivepath/$sourcepath/" -type d -mindepth 2 -depth -exec rmdir -v {} \; 2>/dev/null
     fi
 
     if [ "$testrun" == false ]; then
@@ -425,6 +439,13 @@ scanrsync() {
     fi
     rm -f "$tmperrfile.tmp"
   done
+  if [ "$ERROR_FAIL" == true ] || [ "$LOOP_ERROR_FAIL" == true ]; then
+      echo "Errors found!  Feedback saved at:"
+      if [ -f "$tmperrfile.tmp" ]; then echo "$tmperrfile.tmp"; fi
+      if [ -f "$tmperrfile" ]; then echo "$tmperrfile"; fi
+      if [ -f "$errdump" ]; then echo "$errdump"; fi
+      echo ""
+  fi
 }
 mailout() {
   type="$1"
@@ -607,10 +628,13 @@ if [ "$MOUNT_ONLY" == true ]; then
   fi
 fi
 
+
+
 SOURCE_FOLDERPATH=false
 ERROR_FAIL=false
-verifydriveflags "$RUNTMPPATH"
-findcopypaths
+
+builddrivepaths "$RUNTMPPATH" "$RUNTMPPATH/drives.txt"
+findcopypaths "$RUNTMPPATH" "$RUNTMPPATH/drives.txt" "$RUNTMPPATH/copypaths.txt"
 
 # If there was an error mounting/loading
 if [ "$ERROR_FAIL" == true ] || [ "$PRE_ERROR_FAIL" == true ]; then
@@ -626,7 +650,6 @@ mkdir -p "$ERRDUMP_FOLDERPATH"
 echo "errdump: $ERRDUMP_FILEPATH"
 echo "logpath: $RUNLOGPATH"
 
-#prefregstr="(?:\d+\/\d+\/\d+\s+\d+\:\d+\:\d+\s+\[\d+\]\s+)?"
 if [ "$VALID_CHECK" == true ]; then
   PRE_ERROR_FAIL=false
 
@@ -664,7 +687,6 @@ if [ "$VALID_CHECK" == true ]; then
       targetpaths+=($targetdrivepath)
     done
     for p in ${targetpaths[@]}; do
-#      targetdrivepath="${targetpaths["$p"]}"
       targetdrivepath="$p"
 
       mkdir -p "$targetdrivepath/logs/"
@@ -786,6 +808,9 @@ setlocked "$BASELOCKPATH" "$RUN_TYPE" false "$thedate"
 
 echo
 echo "BACKUP RAN SUCCESSFULLY"
+echo
+echo "Logs saved at:"
+echo "$RUNLOGPATH"
 exit 0
 
 

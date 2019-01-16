@@ -38,7 +38,8 @@ if "campaignid" in arglist:
             else:
                 strarr=[astr]
             runopts['campaignid']=strarr
-
+if "templateonly" in arglist:
+    runopts['templateonly']=True
 
 
 posttypes=['xstorypost','xmessagepost']
@@ -73,6 +74,10 @@ for filename in os.listdir(_COREPATH+"/campaigns/"):
                     if not os.path.exists(templatefolderpath):
                         shutil.copytree(SCRIPTPATH + "/templates/posts/posttemplate", templatefolderpath)
 
+
+if 'templateonly' in runopts.keys():
+    if runopts['templateonly']:
+        sys.exit(0)
 
 
 for filename in os.listdir(_COREPATH+"/campaigns/"):

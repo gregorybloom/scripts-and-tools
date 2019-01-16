@@ -105,19 +105,69 @@ automount() {
     fi
   done
 }
+
+function array_contains() {
+    local n=$#
+    local value=${!n}
+    for ((i=1;i < $#;i++)) {
+        if [ "${!i}" == "${value}" ]; then
+            echo "y"
+            return 0
+        fi
+    }
+    echo "n"
+    return 1
+}
+
+builddrivepaths() {
+  runtmppath="$1"
+  drivepathfile="$2"
+  rm -f "$drivepathfile"
+  touch "$drivepathfile"
+
+  foundflags=()
+  if [ -d "/drives/" ]; then
+      for i in $(ls -1 "/drives/"); do
+          for j in $(ls -1 "/drives/$i/"); do
+              if echo "$j" | grep -qP "^_DRIVEFLAG_\w+\.txt$"; then
+                  flagfile=$(echo "$j" | grep -oP "^_DRIVEFLAG_\w+")
+                  if [ $(array_contains "${foundflags[@]}" "$flagfile") == "n" ]; then
+                    foundflags+=("$flagfile")
+                    echo "/xde/xx,/drives/$i,xx,$flagfile" >> "$drivepathfile"
+                  fi
+              fi
+          done
+      done
+  fi
+  if [ -d "/media/" ]; then
+      for i in $(ls -1 "/media/"); do
+          for j in $(ls -1 "/media/$i/"); do
+              if echo "$j" | grep -qP "^_DRIVEFLAG_\w+\.txt$"; then
+                  flagfile=$(echo "$j" | grep -oP "^_DRIVEFLAG_\w+")
+                  if [ $(array_contains "${foundflags[@]}" "$flagfile") == "n" ]; then
+                    foundflags+=("$flagfile")
+                    echo "/xde/xx,/media/$i,xx,$flagfile" >> "$drivepathfile"
+                  fi
+              fi
+          done
+      done
+  fi
+}
+
 verifydriveflags() {
   runtmppath="$1"
-  mv "$runtmppath/mounted.txt" "$runtmppath/mounted.tmp.txt"
-  touch "$runtmppath/mounted.txt"
-  for j in $(cat "$runtmppath/mounted.tmp.txt"); do
+  drivepathfile="$2"
+  mv "$drivepathfile" "$drivepathfile.tmp"
+  touch "$drivepathfile"
+  for j in $(cat "$drivepathfile.tmp"); do
     IFS=',' read -ra vals4 <<< "$j"    #Convert string to array
     opath=${vals4[0]}
     path=${vals4[1]}
     type=${vals4[2]}
     DRIVE_FLAG=false
-    for k in $(ls -l "$path"); do
-      if echo "$k" | grep -qP "^\-[\w\-\.+]+\s*\d+\s+[\w\+]+\s+[\w\+]+\s+\d+\s+\w+\s+\d+\s+(?:\d+\:)?\d+\s+_DRIVEFLAG_\w+_\.txt\s*$"; then
-        DRIVE_FLAG=$(echo "$k" | grep -oP "(?<=\s)_DRIVEFLAG_\w+_(?=\.txt\s*$)")
+    for k in $(ls -1 "$path"); do
+      if echo "$k" | grep -qP "^_DRIVEFLAG_\w+_\.txt\s*$"; then
+        DRIVE_FLAG=$(echo "$k" | grep -oP "_DRIVEFLAG_\w+_(?=\.txt\s*$)")
         break
       fi
     done
@@ -125,6 +175,6 @@ verifydriveflags() {
       continue
     fi
     echo "$opath,$path,$type,$DRIVE_FLAG"
-    echo "$opath,$path,$type,$DRIVE_FLAG" >> "$runtmppath/mounted.txt"
+    echo "$opath,$path,$type,$DRIVE_FLAG" >> "$drivepathfile"
   done
 }

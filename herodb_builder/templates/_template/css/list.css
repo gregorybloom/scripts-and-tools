@@ -15,10 +15,11 @@
 .linkdivback {
   position:absolute;
   right:10px;
-  width:180px;
+//  width:180px;
   top:0px;
   padding-top:5px;
   text-align: right;
+//  border:1px #000 solid;
 }
 
 .linkdivtitle {
