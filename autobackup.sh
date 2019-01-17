@@ -123,17 +123,17 @@ sourcematch() {
   elif [ ! "$SOURCE_SCRIPT" == false ]; then
     if [[ $SOURCE_SCRIPT == $sourcematchpath* ]]; then
       true
-    elif [[ "$sourcematchpath" == "/drives/c" ]] && [[ "$HOME" == "/home/mobaxterm" ]] && [[ "$SCRIPTPATH" == /home/* ]]; then
-      true
+#    elif [[ "$sourcematchpath" == "/drives/c" ]] && [[ "$HOME" == "/home/mobaxterm" ]] && [[ "$SCRIPTPATH" == /home/* ]]; then
+#      true
     else
       false
     fi
   else
-    if [[ "$sourcematchpath" == "/drives/c" ]] && [[ "$HOME" == "/home/mobaxterm" ]] && [[ "$SCRIPTPATH" == /home/* ]]; then
-      true
-    else
+#    if [[ "$sourcematchpath" == "/drives/c" ]] && [[ "$HOME" == "/home/mobaxterm" ]] && [[ "$SCRIPTPATH" == /home/* ]]; then
+#      true
+#    else
       false
-    fi
+#    fi
   fi
 }
 #####################################
@@ -143,6 +143,7 @@ findcopypaths() {
   copypathfile="$3"
 
   touch "$copypathfile"
+  echo ""
   for j in $(cat "$drivepathfile"); do
     IFS=',' read -ra vals5 <<< "$j"    #Convert string to array
 
@@ -155,7 +156,7 @@ findcopypaths() {
     backupflags=()
     if sourcematch "$path"; then
         flagname="_BACKUP"$(echo "$driveflag" | grep -oP "(?<=_DRIVE)FLAG_\w+_")
-        for k in $(ls -1 "$_AUTOBACKUPINFOFOLDER"); do
+        for k in $(ls -1 "$SCRIPTDIR/$_AUTOBACKUPINFOFOLDER"); do
             if [ "$k" == "$flagname.txt" ]; then
                 backupflags+=($flagname)
             fi
@@ -165,8 +166,8 @@ findcopypaths() {
     for back in ${backupflags[@]}; do
       backfile="$back"
 
-      if [ -f "$_AUTOBACKUPINFOFOLDER/$backfile.txt" ]; then
-        for m in $(cat "$_AUTOBACKUPINFOFOLDER/$backfile.txt"); do
+      if [ -f "$SCRIPTDIR/$_AUTOBACKUPINFOFOLDER/$backfile.txt" ]; then
+        for m in $(cat "$SCRIPTDIR/$_AUTOBACKUPINFOFOLDER/$backfile.txt"); do
 
           if echo "$m" | grep -qP "^\s*\w+,"; then
 
@@ -245,6 +246,7 @@ findcopypaths() {
     done
     #
   done
+  echo ""
 }
 scanrsync() {
   testrun=$1
@@ -288,9 +290,6 @@ scanrsync() {
     rm -f "$tmperrfile.tmp2"
 
     echo '-----------------------------------------------------'
-    echo '-----------------------------------------------------'
-    echo "$drivepath/$sourcepath"
-    echo "$targetdrivepath/$targetpath"
     echo '-----------------------------------------------------'
     if [ -e "$drivepath/$sourcepath" ] && [ -e "$targetdrivepath/$targetpath" ]; then
 
