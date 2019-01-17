@@ -4,7 +4,7 @@ SCRIPTDIR=`dirname "$SCRIPTPATH"`
 
 IFS=$'\n'
 
-OPTS=`getopt -o vh: --long help,verbose,pullserver,discordall,discorddl,discordcomp,discordpack,cloud,cloudonly,filedump,nodump,runcomp: -n 'parse-options' -- "$@"`
+OPTS=`getopt -o vh: --long help,verbose,pullserver,discordall,discorddl,discordcomp,discordpack,cloud,cloudonly,tryalso:,tryinstead:,cloudtryalso:,cloudtryinstead:,nodump,runcomp: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 loadopts() {
   echo "$OPTS"
@@ -12,30 +12,40 @@ loadopts() {
 
   VERBOSE=false
   HELP=false
+
   PULLSERVER=false
   DISCORDRUN=false
   DISCORDTYPE=0
-  CLOUDRUN=false
-  CLOUDTYPE=0
-  DUMPBACKUP=true
-  DUMPFILES=false
 
+  CLOUDRUN=false
+  CLOUDBASIC=false
+
+  DUMPBACKUP=true
+  DUMPBASICS=true
+
+  BACKUPRUNSET=false
+  CLOUDRUNSET=false
   while true; do
    case "$1" in
     -v | --verbose ) VERBOSE=true; shift ;;
     -h | --help )    HELP=true; shift ;;
+
     --runcomp )   RUN_COMP="$2"; shift 2 ;;
+    --nodump )    DUMPBACKUP=false; DUMPBASICS=false; shift ;;
+    --tryalso )   BACKUPRUNSET="$2"; shift 2 ;;
+    --tryinstead )   DUMPBASICS=false; BACKUPRUNSET="$2"; shift 2 ;;
+
     --pullserver )  PULLSERVER=true; shift ;;
     --discordall )   DISCORDRUN=true; DISCORDTYPE=3; shift ;;
     --discordpack )   DISCORDRUN=true; DISCORDTYPE=2; shift ;;
     --discordcomp )   DISCORDRUN=true; DISCORDTYPE=2; shift ;;
     --discorddl )   DISCORDRUN=true; DISCORDTYPE=1; shift ;;
 
-    --cloud )     CLOUDRUN=true; CLOUDTYPE=1; shift ;;
-    --cloudonly )   CLOUDRUN=true; CLOUDTYPE=2; DUMPBACKUP=false; shift ;;
-    --filedump )    DUMPFILES=true; shift ;;
-    --nodump )    DUMPBACKUP=false; shift ;;
+    --cloud )     CLOUDRUN=true; CLOUDBASIC=true; shift ;;
+    --cloudonly )   CLOUDRUN=true; CLOUDBASIC=true; DUMPBACKUP=false; DUMPBASICS=false; shift ;;
 
+    --cloudtryalso )   CLOUDRUNSET="$2"; shift 2 ;;
+    --cloudtryinstead )   CLOUDBASIC=false; CLOUDRUNSET="$2"; shift 2 ;;
     -- ) shift; break ;;
     * ) break ;;
     esac
@@ -59,6 +69,29 @@ else
 fi
 
 
+backuprunlist=false
+if [ "$DUMPBACKUP" == true ] ; then
+  if [ "$DUMPBASICS" == true ] ; then
+    backuprunlist=($RUNNAME)
+  fi
+  if echo "$BACKUPRUNSET" | grep -qP "^\w+\s*(?:,\s*\w+)*$"; then
+      backuprunlist=(${BACKUPRUNSET//,/
+})
+  fi
+fi
+
+cloudrunlist=false
+if [ "$CLOUDRUN" == true ]; then
+  if [ "$CLOUDBASIC" == true ]; then
+    cloudrunlist=($CLOUDRUNNAME)
+  fi
+  if echo "$CLOUDRUNSET" | grep -qP "^\w+\s*(?:,\s*\w+)*$"; then
+      cloudrunlist=(${CLOUDRUNSET//,/
+})
+  fi
+fi
+
+
 mkdir -p "$RUNTMPPATH"
 rm -f "$RUNTMPPATH/mounted.txt"
 
@@ -70,7 +103,7 @@ builddrivepaths "$RUNTMPPATH" "$RUNTMPPATH/drives.txt"
 #verifydriveflags "$RUNTMPPATH"
 
 if grep -qP "$DRIVEFILE" "$RUNTMPPATH/drives.txt"; then
-  value=$(grep -P "$DRIVEFILE" "$RUNTMPPATH/drives.txt")
+  value=$(grep -P "\b$DRIVEFILE\b" "$RUNTMPPATH/drives.txt")
   basedrive=$(echo "$value" | grep -oP "(?<=,)\/[^,]+(?=,\w+,\w+)")
 else
   echo "NO $DRIVEFILE FOUND"
@@ -78,7 +111,6 @@ else
 fi
 echo "done locating targets"
 
-DOSOURCE=true
 sourcepath="$basedrive/"
 
 tuser=$(whoami)
@@ -87,7 +119,6 @@ if [ ! -z ${SCRIPTFOLDERPATH+x} ]; then
 else
   lastdir=$(echo "$SCRIPTDIR" | grep -oP "^.*(?=\/)")
 fi
-
 
 if [ "$PULLSERVER" == true ]; then
   (cd ..;/bin/bash "$lastdir"/backup_102.sh)
@@ -104,23 +135,20 @@ if [ "$DISCORDRUN" == true ]; then
 fi
 
 if [ "$DUMPBACKUP" == true ] ; then
-  if [ "$DOSOURCE" == false ]; then
-    /bin/bash "$lastdir"/autobackup.sh --runtype="$RUNNAME" --force
-  else
-    /bin/bash "$lastdir"/autobackup.sh --runtype="$RUNNAME" --force --sourcescript="$sourcepath"
-  fi
-  if [ "$DUMPFILES" == true ] ; then
-    if [ "$DOSOURCE" == false ]; then
-      /bin/bash "$lastdir"/autobackup.sh --runtype="$RUNNAMEEXTRA" --force
-    else
-      /bin/bash "$lastdir"/autobackup.sh --runtype="$RUNNAMEEXTRA" --force --sourcescript="$sourcepath"
-    fi
+  if [ ! "$backuprunlist" == false ] ; then
+    for back in ${backuprunlist[@]}; do
+        runtext="$back"
+        /bin/bash "$lastdir"/autobackup.sh --runtype="$runtext" --force --sourcescript="$sourcepath"
+      done
   fi
 fi
 if [ "$CLOUDRUN" == true ]; then
-  if grep -qP "$CLOUDDRIVEFILE" "$RUNTMPPATH/drives.txt"; then
-    value=$(grep -P "$CLOUDDRIVEFILE" "$RUNTMPPATH/drives.txt")
-    clouddrive=$(echo "$value" | grep -oP "(?<=,)\/[^,]+(?=,\w+,\w+)")
-    /bin/bash "$lastdir"/autobackup.sh --runtype="$CLOUDRUNNAME" --force --sourcescript="$clouddrive/"
+  if [ ! "$cloudrunlist" == false ] ; then
+    for back in ${cloudrunlist[@]}; do
+        runtext="$back"
+        value=$(grep -P "$CLOUDDRIVEFILE" "$RUNTMPPATH/drives.txt")
+        clouddrive=$(echo "$value" | grep -oP "(?<=,)\/[^,]+(?=,\w+,\w+)")
+        /bin/bash "$lastdir"/autobackup.sh --runtype="$runtext" --force --sourcescript="$clouddrive/"
+      done
   fi
 fi
