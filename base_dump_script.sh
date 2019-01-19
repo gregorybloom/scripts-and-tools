@@ -126,7 +126,7 @@ fi
 
 if [ "$PULLSERVER" == true ]; then
   (cd ..;/bin/bash "$lastdir"/backup_102.sh)
-#  (cd ..;/bin/bash "$lastdir"/backup_111.sh)
+  (cd ..;/bin/bash "$lastdir"/backup_111.sh)
 fi
 if [ "$DISCORDRUN" == true ]; then
   case "$DISCORDTYPE" in
