@@ -31,12 +31,6 @@ RUNTMPPATH="/tmp/autobackup/qtmp"
 mkdir -p "$RUNTMPPATH"
 rm -f "$RUNTMPPATH/mounted.txt"
 
-#echo "loading mounts"
-#loadmounts "$RUNTMPPATH" "mounted.txt"
-#echo "verifying flags"
-#verifydriveflags "$RUNTMPPATH"
-#echo "loaded mounts and located flags"
-
 _SERVERBACKDUMP="${HOME}""$_SERVER111_BACKBASE"
 
 echo "saving to: $_SERVERBACKDUMP"
@@ -50,18 +44,12 @@ CONFIGDUMP="$_SERVERBACKDUMP/Config/configdump"
 #NODEDUMP="$_SERVERBACKDUMP/NodeFiles/filedump"
 
 
-
 RETRIEVEPATH="/tmp/retrieve"
 SCRIPTTMP="/tmp/scripttmp"
 
 
 rm -rf "$SCRIPTTMP"
-rm -rf "$CONFIGDUMP"
 mkdir -p "$SCRIPTTMP/"
-mkdir -p "$CONFIGDUMP/"
-
-#echo -e "\nEnter Server111 Password:\n"
-#read -s _SERVER111_PASSWORD
 
 # #########################################################################################
 echo -e "\nDownloading server config"
@@ -69,24 +57,29 @@ echo -e "\nDownloading server config"
 rm -rf "$RETRIEVEPATH"
 mkdir -p "$RETRIEVEPATH/etc"
 chmod 755 -R "$RETRIEVEPATH"
+echo '------'
 #rsync --exclude-from "$_DIR_/config/r_excludes.txt" -e "ssh -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no -p $_SERVER111_PORT" -avvzcWP --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_ETCCONF" "$RETRIEVEPATH/etc"
-rsync --exclude-from "$_DIR_/config/r_excludes.txt" --exclude-from "$_DIR_/config/serverinfo/server111_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER111_PORT" -avvzcWP --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_ETCCONF" "$RETRIEVEPATH/etc"
+rsync --exclude-from "$_DIR_/config/r_excludes.txt" --exclude-from "$_DIR_/config/serverinfo/server111_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER111_PORT" -azcW --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_ETCCONF" "$RETRIEVEPATH/etc"
+echo "/etc/ rsync complete"
 
-
-cp -r "$RETRIEVEPATH/etc" "$CONFIGDUMP"
+mkdir -p "$SCRIPTTMP/configdump"
+cp -r "$RETRIEVEPATH/etc" "$SCRIPTTMP/configdump"
 
 # Download '_SERVER111_ etc config' to /retrieve, copy to 'CONFIGDUMP'
 rm -rf "$RETRIEVEPATH"
 mkdir -p "$RETRIEVEPATH/home"
 chmod 755 -R "$RETRIEVEPATH"
 #rsync --exclude-from "$_DIR_/config/r_excludes.txt" -e "ssh -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no -p $_SERVER111_PORT" -avvzcWP --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*" --include "*/*"
-rsync --exclude-from "$_DIR_/config/r_excludes.txt" --exclude-from "$_DIR_/config/serverinfo/server111_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER111_PORT" -avvzcWP --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*" --include "*/*"
+rsync --exclude-from "$_DIR_/config/r_excludes.txt" --exclude-from "$_DIR_/config/serverinfo/server111_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER111_PORT" -azcW --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*" --include "*/*"
+echo "~/ rsync complete"
 
-cp -r "$RETRIEVEPATH/home" "$CONFIGDUMP"
+cp -r "$RETRIEVEPATH/home" "$SCRIPTTMP/configdump"
 
-# Zip 'CONFIGDUMP', move to 'CONFIGDUMPs' path folder
-mv "$CONFIGDUMP" "$SCRIPTTMP/"
-tar cvzf "$SCRIPTTMP/configdump.tar.gz" -C "$SCRIPTTMP" "configdump"
+# Zip 'CONFIGDUMP', move to 'CONFIGDUMPs' path folder. tar -C "[path/folder]" creates new startpoint for tar
+curdir=$(pwd)
+cd "$SCRIPTTMP"
+tar czf "$SCRIPTTMP/configdump.tar.gz" "configdump"
+cd "$curdir"
 mv "$SCRIPTTMP/configdump.tar.gz" "$CONFIGDUMP""_$currtime.tar.gz"
 rm -rfv "$SCRIPTTMP/configdump"
 

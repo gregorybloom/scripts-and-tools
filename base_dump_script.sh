@@ -4,7 +4,7 @@ SCRIPTDIR=`dirname "$SCRIPTPATH"`
 
 IFS=$'\n'
 
-OPTS=`getopt -o vh: --long help,verbose,pullserver,discordall,discorddl,discordcomp,discordpack,cloud,cloudonly,tryalso:,tryinstead:,cloudtryalso:,cloudtryinstead:,nodump,runcomp: -n 'parse-options' -- "$@"`
+OPTS=`getopt -o vh: --long help,verbose,pushscripts,pullserver,discordall,discorddl,discordcomp,discordpack,cloud,cloudonly,tryalso:,tryinstead:,cloudtryalso:,cloudtryinstead:,nodump,runcomp: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 loadopts() {
   echo "$OPTS"
@@ -46,6 +46,8 @@ loadopts() {
 
     --cloudtryalso )   CLOUDRUNSET="$2"; shift 2 ;;
     --cloudtryinstead )   CLOUDBASIC=false; CLOUDRUNSET="$2"; shift 2 ;;
+
+    --pushscripts )   RUNNAME="$SCRIPTRUNNAME"; shift ;;
     -- ) shift; break ;;
     * ) break ;;
     esac

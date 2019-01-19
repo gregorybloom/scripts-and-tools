@@ -44,15 +44,12 @@ MONGODUMP="$_SERVERBACKDUMP/Mongo/mongodump"
 NODEDUMP="$_SERVERBACKDUMP/NodeFiles/filedump"
 
 
-
 RETRIEVEPATH="/tmp/retrieve"
 SCRIPTTMP="/tmp/scripttmp"
 
 
 rm -rf "$SCRIPTTMP"
-rm -rf "$CONFIGDUMP"
 mkdir -p "$SCRIPTTMP/"
-mkdir -p "$CONFIGDUMP/"
 
 # #########################################################################################
 echo "Downloading server config"
@@ -61,23 +58,26 @@ rm -rf "$RETRIEVEPATH"
 mkdir -p "$RETRIEVEPATH/etc"
 chmod 755 -R "$RETRIEVEPATH"
 
-rsync --exclude-from "$_DIR_/config/r_excludes.txt" --exclude-from "$_DIR_/config/serverinfo/server102_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -avvzcWP --safe-links --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:$_SERVER102_ETCCONF" "$RETRIEVEPATH/etc"
-echo "rsync complete"
+rsync --exclude-from "$_DIR_/config/r_excludes.txt" --exclude-from "$_DIR_/config/serverinfo/server102_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -azcW --safe-links --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:$_SERVER102_ETCCONF" "$RETRIEVEPATH/etc"
+echo "/etc/ rsync complete"
 
-cp -r "$RETRIEVEPATH/etc" "$CONFIGDUMP"
+mkdir -p "$SCRIPTTMP/configdump"
+cp -r "$RETRIEVEPATH/etc" "$SCRIPTTMP/configdump"
 
 # Download '_SERVER102_ etc config' to /retrieve, copy to 'CONFIGDUMP'
 rm -rf "$RETRIEVEPATH"
 mkdir -p "$RETRIEVEPATH/home"
 chmod 755 -R "$RETRIEVEPATH"
-rsync --exclude-from "$_DIR_/config/r_excludes.txt" --exclude-from "$_DIR_/config/serverinfo/server102_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -avvzcWP --safe-links --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:$_SERVER102_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*"
-echo "rsync complete"
+rsync --exclude-from "$_DIR_/config/r_excludes.txt" --exclude-from "$_DIR_/config/serverinfo/server102_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -azcW --safe-links --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:$_SERVER102_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*"
+echo "~/ rsync complete"
 
-cp -r "$RETRIEVEPATH/home" "$CONFIGDUMP"
+cp -r "$RETRIEVEPATH/home" "$SCRIPTTMP/configdump"
 
-# Zip 'CONFIGDUMP', move to 'CONFIGDUMPs' path folder
-mv "$CONFIGDUMP" "$SCRIPTTMP/"
-tar cvzf "$SCRIPTTMP/configdump.tar.gz" -C "$SCRIPTTMP" "configdump"
+# Zip 'CONFIGDUMP', move to 'CONFIGDUMPs' path folder. tar -C "[path/folder]" creates new startpoint for tar
+curdir=$(pwd)
+cd "$SCRIPTTMP"
+tar czf "$SCRIPTTMP/configdump.tar.gz" "configdump"
+cd "$curdir"
 mv "$SCRIPTTMP/configdump.tar.gz" "$CONFIGDUMP""_$currtime.tar.gz"
 rm -rfv "$SCRIPTTMP/configdump"
 
@@ -98,7 +98,10 @@ for fn in $(echo $STUFF); do
 		IFS=$', '
 		for dn in $(echo $LIP2); do
 			if(echo "$dn" | grep -inorP --quiet '^"\w+.*"'); then
-				dblist+=("$dn")
+        dnval=$(echo "$dn" | grep -oP '(?<=")(\w+.*)(?=")')
+        if [ ! "$dnval" == "config" ] && [ ! "$dnval" == "local" ]; then
+			      dblist+=("$dn")
+        fi
 			fi
 		done
 	fi
@@ -106,19 +109,19 @@ for fn in $(echo $STUFF); do
 done
 
 # clear mongo dumps on server, dump all tables, tar.gz tables
-ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" 'rm -f mongodump.tar.gz; rm -Rvf dump; rm -Rvf mongodump'
+ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" 'rm -f mongodump.tar.gz; rm -Rvf dump; rm -Rf mongodump'
 for dbi in ${dblist[@]}; do
   echo " - Downloading: $dbi"
 	ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" "mongodump --db '$dbi' --port '$_SERVER102_MONGO_PORT' --username '$_SERVER102_ADMINUSER' --password '$_SERVER102_ADMINPASS'"
 done
-ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" 'if [ -e dump ]; then mv dump mongodump; tar cvzf mongodump.tar.gz mongodump; fi; rm -Rvf mongodump'
+ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" 'if [ -e dump ]; then mv dump mongodump; tar czf mongodump.tar.gz mongodump; fi; rm -Rf mongodump'
 
 mkdir -p "$RETRIEVEPATH/ret_tmp"
 chmod 755 -R "$RETRIEVEPATH"
 
 echo "mongodump tarred"
 # download tar.gz'd mongo tables
-rsync --exclude-from "$_DIR_/config/r_excludes.txt" --temp-dir='ret_tmp' -e "ssh -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -avvzcWP --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:mongodump.tar.gz" "$RETRIEVEPATH"
+rsync --exclude-from "$_DIR_/config/r_excludes.txt" --temp-dir='ret_tmp' -e "ssh -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -azcW --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:mongodump.tar.gz" "$RETRIEVEPATH"
 rm -rf "$RETRIEVEPATH/ret_tmp"
 
 if [ -e "$RETRIEVEPATH/mongodump.tar.gz" ]; then
@@ -130,7 +133,7 @@ fi
 rm -rf "$RETRIEVEPATH"
 
 
-ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" 'rm -f mongodump.tar.gz; rm -Rvf dump; rm -Rvf mongodump'
+ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" 'rm -f mongodump.tar.gz; rm -Rf dump; rm -Rf mongodump'
 echo "Done"
 
 
@@ -156,7 +159,7 @@ pathsarr=()
 done
 for _pathitem in ${!pathsarr[@]}; do
   nodepath="${pathsarr["$_pathitem"]}"
-  rsync --exclude-from "$_DIR_/config/r_excludes.txt" --temp-dir='ret_tmp' -e "ssh -i $_SSHKEYPATH -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -avvzcWP --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:$_SERVER102_WEBPATH/$nodeappname/$nodepath" "$RETRIEVEPATH"
+  rsync --exclude-from "$_DIR_/config/r_excludes.txt" --temp-dir='ret_tmp' -e "ssh -i $_SSHKEYPATH -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -azcW --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:$_SERVER102_WEBPATH/$nodeappname/$nodepath" "$RETRIEVEPATH"
 done
 
 rm -rf "$RETRIEVEPATH/ret_tmp"
