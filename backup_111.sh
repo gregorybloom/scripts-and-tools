@@ -69,7 +69,9 @@ echo -e "\nDownloading server config"
 rm -rf "$RETRIEVEPATH"
 mkdir -p "$RETRIEVEPATH/etc"
 chmod 755 -R "$RETRIEVEPATH"
-rsync --exclude-from "$_DIR_/config/r_excludes.txt" -e "ssh -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no -p $_SERVER111_PORT" -avvzcWP --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_ETCCONF" "$RETRIEVEPATH/etc"
+#rsync --exclude-from "$_DIR_/config/r_excludes.txt" -e "ssh -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no -p $_SERVER111_PORT" -avvzcWP --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_ETCCONF" "$RETRIEVEPATH/etc"
+rsync --exclude-from "$_DIR_/config/r_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER111_PORT" -avvzcWP --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_ETCCONF" "$RETRIEVEPATH/etc"
+
 
 cp -r "$RETRIEVEPATH/etc" "$CONFIGDUMP"
 
@@ -77,8 +79,8 @@ cp -r "$RETRIEVEPATH/etc" "$CONFIGDUMP"
 rm -rf "$RETRIEVEPATH"
 mkdir -p "$RETRIEVEPATH/home"
 chmod 755 -R "$RETRIEVEPATH"
-rsync --exclude-from "$_DIR_/config/r_excludes.txt" -e "ssh -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no -p $_SERVER111_PORT" -avvzcWP --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*" --include "*/*"
-
+#rsync --exclude-from "$_DIR_/config/r_excludes.txt" -e "ssh -o PreferredAuthentications=keyboard-interactive,password -o PubkeyAuthentication=no -p $_SERVER111_PORT" -avvzcWP --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*" --include "*/*"
+rsync --exclude-from "$_DIR_/config/r_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER111_PORT" -avvzcWP --safe-links --port="$_SERVER111_PORT" "$_SERVER111_USER@$_SERVER111_IP:$_SERVER111_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*" --include "*/*"
 
 cp -r "$RETRIEVEPATH/home" "$CONFIGDUMP"
 

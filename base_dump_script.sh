@@ -74,9 +74,11 @@ if [ "$DUMPBACKUP" == true ] ; then
   if [ "$DUMPBASICS" == true ] ; then
     backuprunlist=($RUNNAME)
   fi
-  if echo "$BACKUPRUNSET" | grep -qP "^\w+\s*(?:,\s*\w+)*$"; then
-      backuprunlist=(${BACKUPRUNSET//,/
+  if [ ! "$BACKUPRUNSET" == false ]; then
+    if echo "$BACKUPRUNSET" | grep -qP "^\w+\s*(?:,\s*\w+)*$"; then
+        backuprunlist=(${BACKUPRUNSET//,/
 })
+    fi
   fi
 fi
 
@@ -85,9 +87,11 @@ if [ "$CLOUDRUN" == true ]; then
   if [ "$CLOUDBASIC" == true ]; then
     cloudrunlist=($CLOUDRUNNAME)
   fi
-  if echo "$CLOUDRUNSET" | grep -qP "^\w+\s*(?:,\s*\w+)*$"; then
-      cloudrunlist=(${CLOUDRUNSET//,/
+  if [ ! "$CLOUDRUNSET" == false ]; then
+    if echo "$CLOUDRUNSET" | grep -qP "^\w+\s*(?:,\s*\w+)*$"; then
+        cloudrunlist=(${CLOUDRUNSET//,/
 })
+    fi
   fi
 fi
 
@@ -133,6 +137,8 @@ if [ "$DISCORDRUN" == true ]; then
     *) break ;;
   esac
 fi
+
+echo "$CLOUDRUN,$cloudrunlist"
 
 if [ "$DUMPBACKUP" == true ] ; then
   if [ ! "$backuprunlist" == false ] ; then
