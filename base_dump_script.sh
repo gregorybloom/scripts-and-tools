@@ -126,7 +126,7 @@ fi
 
 if [ "$PULLSERVER" == true ]; then
   (cd ..;/bin/bash "$lastdir"/backup_102.sh)
-  (cd ..;/bin/bash "$lastdir"/backup_111.sh)
+#  (cd ..;/bin/bash "$lastdir"/backup_111.sh)
 fi
 if [ "$DISCORDRUN" == true ]; then
   case "$DISCORDTYPE" in
@@ -137,8 +137,6 @@ if [ "$DISCORDRUN" == true ]; then
     *) break ;;
   esac
 fi
-
-echo "$CLOUDRUN,$cloudrunlist"
 
 if [ "$DUMPBACKUP" == true ] ; then
   if [ ! "$backuprunlist" == false ] ; then

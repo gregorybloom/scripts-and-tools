@@ -61,7 +61,7 @@ rm -rf "$RETRIEVEPATH"
 mkdir -p "$RETRIEVEPATH/etc"
 chmod 755 -R "$RETRIEVEPATH"
 
-rsync --exclude-from "$_DIR_/config/r_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -avvzcWP --safe-links --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:$_SERVER102_ETCCONF" "$RETRIEVEPATH/etc"
+rsync --exclude-from "$_DIR_/config/r_excludes.txt" --exclude-from "$_DIR_/config/serverinfo/server102_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -avvzcWP --safe-links --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:$_SERVER102_ETCCONF" "$RETRIEVEPATH/etc"
 echo "rsync complete"
 
 cp -r "$RETRIEVEPATH/etc" "$CONFIGDUMP"
@@ -70,7 +70,7 @@ cp -r "$RETRIEVEPATH/etc" "$CONFIGDUMP"
 rm -rf "$RETRIEVEPATH"
 mkdir -p "$RETRIEVEPATH/home"
 chmod 755 -R "$RETRIEVEPATH"
-rsync --exclude-from "$_DIR_/config/r_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -avvzcWP --safe-links --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:$_SERVER102_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*"
+rsync --exclude-from "$_DIR_/config/r_excludes.txt" --exclude-from "$_DIR_/config/serverinfo/server102_excludes.txt" -e "ssh -o PreferredAuthentications=publickey -p $_SERVER102_PORT" -avvzcWP --safe-links --port="$_SERVER102_PORT" "$_SERVER102_USER@$_SERVER102_IP:$_SERVER102_HOMEFOLDER" "$RETRIEVEPATH/home" --exclude "*/*/" --include "*"
 echo "rsync complete"
 
 cp -r "$RETRIEVEPATH/home" "$CONFIGDUMP"
@@ -89,7 +89,7 @@ echo "Downloading mongo dumps"
 
 # go to nodechat, build list of mongo tables
 IFS=$'\n'
-STUFF=$(ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p $_SERVER102_PORT 'mongo '"$_SERVER102_ADMINDB" --port $_SERVER102_MONGO_PORT' --eval "printjson(db.getMongo().getDBNames())"')
+STUFF=$(ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p $_SERVER102_PORT "mongo '$_SERVER102_ADMINDB' --port $_SERVER102_MONGO_PORT --username '$_SERVER102_ADMINUSER' --password '$_SERVER102_ADMINPASS' --eval 'printjson(db.getMongo().getDBNames())'")
 dblist=()
 for fn in $(echo $STUFF); do
 	LIP=$(echo "$fn" | grep -ioP '\[\s*".*"\s*\]\s*')
@@ -109,7 +109,7 @@ done
 ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" 'rm -f mongodump.tar.gz; rm -Rvf dump; rm -Rvf mongodump'
 for dbi in ${dblist[@]}; do
   echo " - Downloading: $dbi"
-	ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" 'mongodump --db "$dbi" --port "'$_SERVER102_MONGO_PORT'"'
+	ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" "mongodump --db '$dbi' --port '$_SERVER102_MONGO_PORT' --username '$_SERVER102_ADMINUSER' --password '$_SERVER102_ADMINPASS'"
 done
 ssh "$_SERVER102_USER@$_SERVER102_IP" -o PreferredAuthentications=publickey -p "$_SERVER102_PORT" 'if [ -e dump ]; then mv dump mongodump; tar cvzf mongodump.tar.gz mongodump; fi; rm -Rvf mongodump'
 
