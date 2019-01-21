@@ -1,6 +1,5 @@
 #!/bin/bash
 
-source "config/findsshkeypath.sh"
 source "config/serverinfo/grab_server100_info.sh"
 
 if [ -d "retrieve" ]; then

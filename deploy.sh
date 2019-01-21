@@ -55,7 +55,6 @@ elif echo "$path" | grep -qP "^\/\.\.\/retrieve(?:\/|\s*(?!.))"; then
 		exit 0
 fi
 
-source "config/findsshkeypath.sh"
 source "config/serverinfo/grab_server100_info.sh"
 source "config/serverinfo/grab_server102_info.sh"
 

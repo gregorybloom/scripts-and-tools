@@ -12,7 +12,6 @@ currtime=$(timestamp)
 echo "time: $currtime"
 _DIR_="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 
-#source "config/findsshkeypath.sh"
 source "$_DIR_/config/serverinfo/grab_server111_info.sh"
 source "$_DIR_/bash_libs/handle_mounts.sh"
 

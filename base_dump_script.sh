@@ -3,8 +3,7 @@ SCRIPTPATH=`realpath "$0"`
 SCRIPTDIR=`dirname "$SCRIPTPATH"`
 
 IFS=$'\n'
-
-OPTS=`getopt -o vh: --long help,verbose,pushscripts,pullserver,discordall,discorddl,discordcomp,discordpack,cloud,cloudonly,tryalso:,tryinstead:,cloudtryalso:,cloudtryinstead:,nodump,runcomp: -n 'parse-options' -- "$@"`
+OPTS=`getopt -o vh: --long help,verbose,launchmode:,pushscripts,pullserver,discordall,discorddl,discordcomp,discordpack,cloud,cloudonly,tryalso:,tryinstead:,cloudtryalso:,cloudtryinstead:,nodump,runcomp: -n 'parse-options' -- "$@"`
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 loadopts() {
   echo "$OPTS"
@@ -13,6 +12,7 @@ loadopts() {
   VERBOSE=false
   HELP=false
 
+  PUSHSCRIPTS=false
   PULLSERVER=false
   DISCORDRUN=false
   DISCORDTYPE=0
@@ -47,7 +47,7 @@ loadopts() {
     --cloudtryalso )   CLOUDRUNSET="$2"; shift 2 ;;
     --cloudtryinstead )   CLOUDBASIC=false; CLOUDRUNSET="$2"; shift 2 ;;
 
-    --pushscripts )   RUNNAME="$SCRIPTRUNNAME"; shift ;;
+    --pushscripts )   PUSHSCRIPTS=true; shift ;;
     -- ) shift; break ;;
     * ) break ;;
     esac
@@ -63,13 +63,17 @@ elif [ "$RUN_COMP" == "asirpa" ]; then
     source "$SCRIPTDIR/config/launcherinfo/asirpadump_info.sh"
 elif [ "$RUN_COMP" == "lenovo" ]; then
     source "$SCRIPTDIR/config/launcherinfo/lenovodump_info.sh"
-  elif [ "$RUN_COMP" == "desktop" ]; then
+elif [ "$RUN_COMP" == "desktop" ]; then
       source "$SCRIPTDIR/config/launcherinfo/desktopdump_info.sh"
 else
     echo "No computer declared."
     exit 0
 fi
 
+
+if [ "$PUSHSCRIPTS" == true ] ; then
+  RUNNAME="$SCRIPTRUNNAME";
+fi
 
 backuprunlist=false
 if [ "$DUMPBACKUP" == true ] ; then
@@ -145,7 +149,7 @@ if [ "$DUMPBACKUP" == true ] ; then
     for back in ${backuprunlist[@]}; do
         runtext="$back"
         /bin/bash "$lastdir"/autobackup.sh --runtype="$runtext" --force --sourcescript="$sourcepath"
-      done
+    done
   fi
 fi
 if [ "$CLOUDRUN" == true ]; then
