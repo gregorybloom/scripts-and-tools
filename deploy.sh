@@ -105,11 +105,10 @@ elif [ "$servernum" == "102" ]; then
 	_SERVER_TARGET_WEBPATH="$_SERVER102_WEBPATH"
 fi
 
-
 if [[ "$isfolder" -eq 1 ]]; then
-	rsync --no-links --exclude-from 'config/d_excludes.txt' -e "ssh -p $_SERVER_TARGET_PORT -i $_SSHKEYPATH -o PreferredAuthentications=publickey" -avvzcWP --delete --delete-after --port="$_SERVER_TARGET_PORT" "$deployfolder/" "$_SERVER_TARGET_USER@$_SERVER_TARGET_IP:$_SERVER_TARGET_WEBPATH/$folderpath"
+	rsync --no-links --exclude-from 'config/d_excludes.txt' -e "ssh -p $_SERVER_TARGET_PORT -o PreferredAuthentications=publickey" -avvzcWP --delete --delete-after --port="$_SERVER_TARGET_PORT" "$deployfolder/" "$_SERVER_TARGET_USER@$_SERVER_TARGET_IP:$_SERVER_TARGET_WEBPATH/$folderpath"
 else
-	rsync --no-links --exclude-from 'config/d_excludes.txt' -e "ssh -p $_SERVER_TARGET_PORT -i $_SSHKEYPATH -o PreferredAuthentications=publickey" -avvzcWP --port="$_SERVER_TARGET_PORT" "$deployfolder/" "$_SERVER_TARGET_USER@$_SERVER_TARGET_IP:$_SERVER_TARGET_WEBPATH/$folderpath"
+	rsync --no-links --exclude-from 'config/d_excludes.txt' -e "ssh -p $_SERVER_TARGET_PORT -o PreferredAuthentications=publickey" -avvzcWP --port="$_SERVER_TARGET_PORT" "$deployfolder/" "$_SERVER_TARGET_USER@$_SERVER_TARGET_IP:$_SERVER_TARGET_WEBPATH/$folderpath"
 fi
 
 

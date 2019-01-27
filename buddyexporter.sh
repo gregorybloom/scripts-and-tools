@@ -6,6 +6,8 @@ SCRIPTDIR=`dirname "$SCRIPTPATH"`
 source "$SCRIPTDIR/bash_libs/handle_mounts.sh"
 source "$SCRIPTDIR/bash_libs/handle_logs.sh"
 
+######################### Half defunct?
+
 IFS=$'\n'
 
 echo "Running: $SCRIPTPATH"
