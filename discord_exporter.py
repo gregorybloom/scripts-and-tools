@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 SCRIPTPATH = os.path.dirname(os.path.realpath(sys.argv[0]))
 discordconf = imp.load_source('discordconf', SCRIPTPATH+'/local_config/discordconf.py')
-discordcompile = imp.load_source('discordcompile', SCRIPTPATH+'/python_libs/compile/compilediscord.py')
+discordcompile = imp.load_source('discordcompile', SCRIPTPATH+'/python_libs/discord/compilediscord.py')
 driveutils = imp.load_source('driveutils', SCRIPTPATH+'/python_libs/utils/log_utils.py')
 
 def readDiscordChannelLog(logfile,type="greasemonkey"):

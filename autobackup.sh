@@ -141,6 +141,7 @@ findcopypaths() {
   runtmppath="$1"
   drivepathfile="$2"
   copypathfile="$3"
+  echo "load drives: $drivepathfile"
 
   touch "$copypathfile"
   echo ""
@@ -156,6 +157,7 @@ findcopypaths() {
     backupflags=()
     if sourcematch "$path"; then
         flagname="_BACKUP"$(echo "$driveflag" | grep -oP "(?<=_DRIVE)FLAG_\w+_")
+        echo "$flagname"
         for k in $(ls -1 "$SCRIPTDIR/$_AUTOBACKUPINFOFOLDER"); do
             if [ "$k" == "$flagname.txt" ]; then
                 backupflags+=($flagname)
@@ -827,6 +829,3 @@ exit 0
 #
 #  https://serverfault.com/questions/348482/how-to-remove-invalid-characters-from-filenames
 #  https://unix.stackexchange.com/questions/109747/identify-files-with-non-ascii-or-non-printable-characters-in-file-name
-
-#  rm -f /tmp/cronlog.txt; /media/raid/SERVER_SCRIPTS/scripts-and-tools/autobackup.sh --runtype=manuraid --email --vcheck >> /tmp/cronlog.txt 2>&1
-#  sudo /etc/init.d/cron restart

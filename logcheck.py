@@ -14,6 +14,7 @@ if "_testfromlog" in arglist:
 	if pt < len(arglist):
 		runopts['testlog']=arglist[pt]
 if "_testatlog" in arglist:
+	# secondary dupe log to compare to
 	pt=arglist.index("_testatlog")+1
 	if pt < len(arglist):
 		runopts['verslog']=arglist[pt]
@@ -29,6 +30,13 @@ if "_logfrompath" in arglist:
 
 if "build" in arglist:
 	logmode="buildlog"
+if "skipfirst" in arglist:
+	runopts['skipfirst']=True
+if "_skipfirstpath" in arglist:
+	runopts['skipfirstpath']=True
+	pt=arglist.index("_skipfirstpath")+1
+	if pt < len(arglist):
+		runopts['skipfirstpathregex']=arglist[pt]
 if "flipfilter" in arglist:
 	runopts['flipfilter']=True
 
@@ -61,4 +69,4 @@ elif logmode == "buildlog":
 		filelist.beginMD5Walk(targetpath+'/',logname,runopts['walkopts'])
 		driveutils.sortLogByPath(logname)
 
-		print "Dupe Log built: ",logname
+		print "MD5/SHA Log built: ",logname

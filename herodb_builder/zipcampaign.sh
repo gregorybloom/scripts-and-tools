@@ -98,14 +98,17 @@ if [ "$beginzip" == true ]; then
                 echo "";
                 ls -l "$fullpath/$newname-$campaignid.zip";
 
-                for i in $(ls -1 /drives/); do
-                    if [ -d "/drives/$i/$droppath" ]; then
-                        if [ -f "/drives/$i/$droppath/$newname-$campaignid.zip" ]; then
-                            rm -f "/drives/$i/$droppath/$newname-$campaignid.zip";
+                for j in $(ls -1 /drives/); do
+                    echo "/drives/$j/$droppath"
+                    if [ -d "/drives/$j/$droppath" ] && [ -f "$fullpath/$newname-$campaignid.zip" ]; then
+                        echo "$fullpath/$newname-$campaignid.zip"
+                        if [ -f "/drives/$j/$droppath/$newname-$campaignid.zip" ]; then
+                            rm -f "/drives/$j/$droppath/$newname-$campaignid.zip";
                         fi;
-                        mv "$fullpath/$newname-$campaignid.zip" "/drives/$i/$droppath/$newname-$campaignid.zip";
-                        ls -l "/drives/$i/$droppath/$newname-$campaignid.zip";
+                        mv "$fullpath/$newname-$campaignid.zip" "/drives/$j/$droppath/$newname-$campaignid.zip";
+                        ls -l "/drives/$j/$droppath/$newname-$campaignid.zip";
                     fi;
+                    echo '============'
                 done;
             done
         fi

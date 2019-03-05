@@ -4,6 +4,7 @@ import os, sys, hashlib, time, shutil, re
 import csv, datetime
 
 
+
 def findDupesBetweenLogs(md5log, md5log2, resultlog, tmpfolder, runopts):
 
 	driveutils.sortLogByPath(md5log,0)
@@ -74,10 +75,14 @@ def findDupesInLog(md5log, resultlog, tmpfolder, runopts):
 	md5searchlog['decomp'] = driveutils.decomposeFileLog(md5searchlog['line'])
 
 	lastmd5 = None
+	lastbasepath = None
 	with open(md5log) as f:
 	    for rline in f.readlines():
 
 			fileobj = driveutils.decomposeFileLog(rline)
+			# skip over any entries on the first file ptr already reviewed
+			if lastbasepath is None:
+				lastbasepath = fileobj['fullpath']
 			if lastmd5 is None:
 				lastmd5 = fileobj['sha']
 			elif lastmd5 == fileobj['sha']:
@@ -85,6 +90,12 @@ def findDupesInLog(md5log, resultlog, tmpfolder, runopts):
 
 			print rline.rstrip()
 			found=False
+			lastcheck=False
+			if 'skipfirstpath' in runopts.keys() and re.match("^(.*?\/\/).*",lastbasepath):
+				regex="^(.*?\/\/)"
+				if 'skipfirstpathregex' in runopts.keys():
+					regex=runopts['skipfirstpathregex']
+				lastcheck=re.findall(regex,lastbasepath)[0]
 
 			while md5searchlog['decomp']['sha'] < fileobj['sha'] and md5searchlog['line'].rstrip() != '':
 				md5searchlog['line'] = md5searchlog['obj'].readline()
@@ -94,24 +105,32 @@ def findDupesInLog(md5log, resultlog, tmpfolder, runopts):
 				rline2 = md5searchlog['line']
 				if rline.rstrip() != rline2.rstrip():
 					if found == False:
-#						if 'skipthisfirst' in runopts.keys():
-#							searchahead = open(md5log, 'r')
-#							searchahead.seek(  md5searchlog['obj'].tell()  )
-#							curline = searchahead.readline()
-#							decomp = driveutils.decomposeFileLog(curline)
-
 						if 'skipfirst' in runopts.keys():
 							found=True
-						else:
+						elif 'skipfirstpath' not in runopts.keys():
 							dupelog.write(rline.rstrip()+"\n")
 							found=True
-					dupelog.write(rline2.rstrip()+"\n")
-					print ' - dupe: ' + rline2.rstrip()
+
+					if 'skipfirstpath' in runopts.keys():
+						if re.match("^(.*?\/\/).*",md5searchlog['decomp']['fullpath']):
+							regex="^(.*?\/\/)"
+							if 'skipfirstpathregex' in runopts.keys():
+								regex=runopts['skipfirstpathregex']
+							curcheck=re.findall(regex,md5searchlog['decomp']['fullpath'])[0]
+							if lastcheck != curcheck:
+								found=True
+								dupelog.write(rline2.rstrip()+"\n")
+						#print ' - dupe: ' + rline2.rstrip()
+					else:
+						dupelog.write(rline2.rstrip()+"\n")
+						#print ' - dupe: ' + rline2.rstrip()
+
 				md5searchlog['line'] = md5searchlog['obj'].readline()
 				if md5searchlog['line'].rstrip() != '':
 					md5searchlog['decomp'] = driveutils.decomposeFileLog(md5searchlog['line'])
 
 			lastmd5 = fileobj['sha']
+			lastbasepath = fileobj['fullpath']
 
 	dupelog.close()
 	driveutils.sortLogByPath(resultlog,0)
