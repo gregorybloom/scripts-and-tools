@@ -136,9 +136,9 @@ if [ "$PULLSERVER" == true ]; then
 fi
 if [ "$DISCORDRUN" == true ]; then
   case "$DISCORDTYPE" in
-    1) python "$lastdir"/discord_exporter.py; shift ;;
-    2) python "$lastdir"/discord_exporter.py compileonly; shift ;;
-    3) python "$lastdir"/discord_exporter.py scanall; shift ;;
+    1) py -3 "$lastdir"/discord_exporter.py; shift ;;
+    2) py -3 "$lastdir"/discord_exporter.py compileonly; shift ;;
+    3) py -3 "$lastdir"/discord_exporter.py scanall; shift ;;
     0) break ;;
     *) break ;;
   esac

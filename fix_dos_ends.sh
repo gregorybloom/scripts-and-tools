@@ -15,6 +15,7 @@ sedfile() {
 
 
 if [ -z "$1" ]; then
+  echo "No target provided.  Add a folder or file path."
   exit 0
 else
   target="$1"

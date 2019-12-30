@@ -10,6 +10,7 @@ arglist=sys.argv[1:]
 
 runopts={}
 if "_testfromlog" in arglist:
+	# primary log to compare from
 	pt=arglist.index("_testfromlog")+1
 	if pt < len(arglist):
 		runopts['testlog']=arglist[pt]

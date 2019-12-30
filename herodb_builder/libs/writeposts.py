@@ -7,7 +7,7 @@ filtertext = imp.load_source('filtertext', SCRIPTPATH+'/libs/filtertext.py')
 sortdates = imp.load_source('sortdates', SCRIPTPATH+'/libs/sortdates.py')
 
 
-heroconf = imp.load_source('heroconf', SCRIPTPATH+'/config/herobuildconf.py')
+heroconf = imp.load_source('heroconf', SCRIPTPATH+'/../config/herobuildconf.py')
 _COREPATH=heroconf._HEROPARSINGOUTPUT
 _TMPPATH=heroconf._HEROTMPOUTPUT
 

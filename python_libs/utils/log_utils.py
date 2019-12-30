@@ -4,7 +4,11 @@ import csv
 import copy
 import subprocess
 from subprocess import *
-from Queue import Queue
+#from Queue import Queue
+try:
+   import queue
+except ImportError:
+   import Queue as queue
 from threading import Thread
 
 
@@ -40,7 +44,7 @@ def addToDebugLog(useopts,text,debuglogpath=None):
 			raise
 	if DEBUG_PATH is not None:
 		if 'showdebug' in useopts['debuglog'].keys() and useopts['debuglog']['showdebug'] > 0:
-			print text
+			print (text)
 		addToLog( text+"\n", DEBUG_PATH )
 
 
@@ -122,30 +126,30 @@ def createDictSet(dictobj,buildarr,buildinfo=[]):
 
 	createDictSet(dictobj[groupname],buildarr,buildinfo)
 
+def buildPath(*paths):
+	def mapList(x):
+		return x if not isinstance(x,list) else os.path.join(*x)
+	pathstring=list(map(mapList,paths))
+	return (os.path.join(*pathstring))
+
+
 def createNewLog(logname, append=False):
-#	print '- '+logname
 
-	div = logname.find('/')
-	if div >= 0:
-		parts = logname.rsplit('/',1)
-		path = parts[0]
-		logname = parts[1]
-#		print parts
-	else:
-		path=""
-
+	path = os.path.dirname(logname)
 	if(  not os.path.exists(path)  ):
 		try:
-			print '****** '+path
+			print ('****** '+path)
 			os.makedirs(path)
 		except OSError as exception:
 #			if exception.errno != errno.EEXIST:
 			raise
+#	print(logname)
+#	print(path)
 	if append:
-		fo = open( path +"/"+ logname, 'ab' )
+		fo = open( logname, 'a' )
 		fo.close()
 	else:
-		fo = open( path +"/"+ logname, 'wb' )
+		fo = open( logname, 'w' )
 		fo.close()
 
 
@@ -187,7 +191,7 @@ def decomposeFileLogItemData(logitemstr):
 	else:
 		Larray.append(logitemstr)
 
- 	decompobj={}
+	decompobj={}
 	for dataitem in Larray:
 		if logitemstr.find(":") != -1:
 			datapieces = dataitem.lstrip().split(':',1)
@@ -233,7 +237,7 @@ def subprocHash(q,log,file,opts,filters=None):
 			break
 		fname = fname.replace("//","/")
 #			fname = fname.replace(" ","\ ")
-		print 'subprocess: ',fname
+		print ('subprocess: ',fname)
 		try:
 			mtype='md5'
 			if 'mtype' in opts.keys():
@@ -254,8 +258,8 @@ def subprocHash(q,log,file,opts,filters=None):
 			logfile.close()
 			proc.wait()
 		except OSError as exception:
-			print ' ** OSERROR: ', fname
-			print ' ** - - ', exception.errno
+			print (' ** OSERROR: ', fname)
+			print (' ** - - ', exception.errno)
 #			if exception.errno != errno.EEXIST:
 
 		if q is not None:
@@ -272,7 +276,7 @@ def walkMD5Fast( dirpath, targetlog, opts ):
 	if 'filters' in opts.keys():
 		namefilters=opts['filters']
 
-	filequeue=Queue()
+	filequeue=queue()
 	threads=[]
 
 	if 'walkmode' not in opts.keys():
@@ -442,7 +446,7 @@ def readDir(path, logpath=None):
 	try:
 		listing = os.listdir(path)
 	except OSError as exception:
-		print '******** err on '+str(exception)
+		print ('******** err on '+str(exception))
 		if logpath is not None:
 			logCriticalError('failed to read path: ' +path, logpath)
 			logCriticalError(str(exception), logpath)
@@ -456,14 +460,14 @@ def readDir(path, logpath=None):
 	return listing
 
 def executeProcess(proc):
-	print 'start process'
+	print ('start process')
 	p = subprocess.Popen(proc, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 #	for line in p.stdout.readlines():
 #	    print line,
 #	retval = p.wait()
 	(output, err) = p.communicate()
 	p_status = p.wait()
-	print 'Status: ',p_status
+	print ('Status: ',p_status)
 	return output
 
 
@@ -473,5 +477,5 @@ def executeMountProcess():
 #	p_status = p.wait()
 #	print 'Status: ',p_status
 	output = check_output( [ 'mount' ] )
-	print output
+	print (output)
 	return output

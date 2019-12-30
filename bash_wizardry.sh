@@ -1,6 +1,9 @@
 
 exit;
 
+# Terminal stops providing typing Feedback, stops creating newlines (DON'T DISPLAY RAW BINARY FEEDBACK TO STDOUT YOU FOOL)
+reset;
+
 # Clean up filenames recursively; it _may_ need to be re-run for renamed parent folders
 IFS=$'\n'; for file in $(find . -print -depth); do if echo "$file" | grep -qP ".*['\&\!\"\#\(\)\~]"; then file_clean=${file//[\"\#\!()&\'\~]/_}; mv -v "$file" "$file_clean"; fi; done
 
@@ -9,6 +12,8 @@ IFS=$'\n'; for folder in $(find ./ -maxdepth 1 -type d -print); do if echo "$fol
 
 # delete empty folders at least 2 depth in.  Remove '-depth' to only prune current leaf nodes, not all directory trees
 find "folderpath/to/target/" -type d -mindepth 2 -depth -exec rmdir -v {} \; 2>/dev/null
+
+
 
 
 #------------------------------------------

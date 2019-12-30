@@ -13,7 +13,7 @@ pp = pprint.PrettyPrinter(indent=4)
 
 
 SCRIPTPATH = os.path.dirname(os.path.realpath(sys.argv[0]))
-heroconf = imp.load_source('heroconf', SCRIPTPATH+'/config/herobuildconf.py')
+heroconf = imp.load_source('heroconf', SCRIPTPATH+'/../config/herobuildconf.py')
 
 
 writeposts = imp.load_source('writeposts', SCRIPTPATH+'/libs/writeposts.py')

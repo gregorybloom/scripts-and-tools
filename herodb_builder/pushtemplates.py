@@ -7,7 +7,7 @@ import os,re,shutil,sys,imp,time
 
 
 SCRIPTPATH = os.path.dirname(os.path.realpath(sys.argv[0]))
-heroconf = imp.load_source('heroconf', SCRIPTPATH+'/config/herobuildconf.py')
+heroconf = imp.load_source('heroconf', SCRIPTPATH+'/../config/herobuildconf.py')
 writeposts = imp.load_source('writeposts', SCRIPTPATH+'/libs/writeposts.py')
 writepostlist = imp.load_source('writepostlist', SCRIPTPATH+'/libs/writepostlist.py')
 loadusers = imp.load_source('loadusers', SCRIPTPATH+'/libs/loadusers.py')

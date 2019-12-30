@@ -4,7 +4,7 @@ import pprint
 
 SCRIPTPATH = os.path.dirname(os.path.realpath(sys.argv[0]))
 
-heroconf = imp.load_source('heroconf', SCRIPTPATH+'/config/herobuildconf.py')
+heroconf = imp.load_source('heroconf', SCRIPTPATH+'/../config/herobuildconf.py')
 _COREPATH=heroconf._HEROPARSINGOUTPUT
 _TMPPATH=heroconf._HEROTMPOUTPUT
 

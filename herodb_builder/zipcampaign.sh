@@ -8,7 +8,8 @@ SCRIPTPATH=`realpath "$0"`
 SCRIPTDIR=`dirname "$SCRIPTPATH"`
 
 
-source "$SCRIPTDIR/config/heroconfdata.sh"
+confpath="$SCRIPTDIR/../config/herocentralconf";
+source "$confpath/heroconfdata.sh"
 
 
 fullpath="$_HEROBACKUPPATH";
@@ -49,7 +50,7 @@ if [ "$READINPUT" == true ]; then
     read textname;
 
     c=0;
-    for i in $(grep -P "$textname" "$fullpath/infodump/campaignlist.txt"); do
+    for i in $(grep -P "$textname" "$confpath/campaignlist.txt"); do
         echo "[$c] $i";
         c=$((c+1));
     done;
@@ -57,7 +58,7 @@ if [ "$READINPUT" == true ]; then
     c=0;
     echo "Select Campaign:";
     read number; target="";
-    for i in $(grep -P "$textname" "$fullpath/infodump/campaignlist.txt"); do
+    for i in $(grep -P "$textname" "$confpath/campaignlist.txt"); do
         if [ "$c" == "$number" ]; then
             target="$i";
         fi;
@@ -86,7 +87,7 @@ if [ "$beginzip" == true ]; then
         campaignid="$back"
         echo "$campaignid"
         if [ -d "$fullpath/campaigns/$campaignid" ]; then
-            for i in $(grep -P "^$campaignid," "$fullpath/infodump/campaignlist.txt"); do
+            for i in $(grep -P "^$campaignid," "$confpath/campaignlist.txt"); do
                 campaignname=$(echo "$i" | grep -oP "(?<=\d,\s).*")
                 echo "$campaignid, $campaignname"
 
