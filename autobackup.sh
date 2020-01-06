@@ -298,8 +298,8 @@ scanrsync() {
       touch "$tmplog"
       echo -e "\n--------- $sourcepath ----------\n"
 #     c, D, z
-#      basev="-hrltzOWPSD"
-      basev="-hrtzOWSD"
+#      basev="-hrltzOWPSD"      # try  --inplace instead of -S spare?  could result in bad files(?), but would greatly improve harddrive lifespan
+      basev="-hrtOWSD"
       extend="--no-links --stats --no-compress --exclude-from '$SCRIPTDIR/config/autobackup_excludes.txt' "
       if [ -d "$drivepath/$sourcepath" ]; then
         if [ ! "$copytype" == "drop" ]; then
@@ -408,7 +408,7 @@ scanrsync() {
           echo "$x" >> "$RUNLOGPATH/log_skipdelete-$LOGSUFFIX"
         fi
       done
-      find "$drivepath/$sourcepath/" -type d -mindepth 2 -depth -exec rmdir -v {} \; 2>/dev/null
+      find "$drivepath/$sourcepath/" -type d -mindepth 2 -depth -exec rmdir -v {} \;# 2>/dev/null
     fi
 
     if [ "$testrun" == false ]; then
